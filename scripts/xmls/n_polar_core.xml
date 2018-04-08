@@ -1,0 +1,15 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<RESIDUE_SELECTORS>
+    # Selects core residues using number of side-chain neighbors, using the
+    # cutoff of 3.7 above which a residue is considered to be in the core
+    <Layer name="core" select_core="true" core_cutoff="3.7"/>
+</RESIDUE_SELECTORS>
+<FILTERS>
+    <ResidueCount name="n_polar_core" include_property="POLAR" residue_selector="core"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="n_polar_core"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

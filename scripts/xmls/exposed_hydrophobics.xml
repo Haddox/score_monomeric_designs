@@ -1,0 +1,10 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <TotalSasa name="exposed_hydrophobics" confidence="0" hydrophobic="True" />
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="exposed_hydrophobics" />
+</PROTOCOLS>
+</ROSETTASCRIPTS>

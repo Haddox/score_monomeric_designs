@@ -1,0 +1,10 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <TotalSasa name="exposed_polars" confidence="0" polar="True" />
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="exposed_polars" />
+</PROTOCOLS>
+</ROSETTASCRIPTS>

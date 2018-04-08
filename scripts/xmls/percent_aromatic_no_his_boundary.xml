@@ -1,0 +1,16 @@
+<ROSETTASCRIPTS>
+<RESIDUE_SELECTORS>
+    # Selects core residues using number of side-chain neighbors, using the
+    # cutoffs of 1.3 to 3.7 in between which a residues is considered to be
+    # in the boundary layer.
+    <Layer name="boundary" select_boundary="true" core_cutoff="3.7" surface_cutoff="1.3"/>
+</RESIDUE_SELECTORS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <ResidueCount name="percent_aromatic_no_his_boundary" residue_types="PHE,TRP,TYR" count_as_percentage="True" min_residue_count="0" max_residue_count="100" residue_selector="boundary"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="percent_aromatic_no_his_boundary"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

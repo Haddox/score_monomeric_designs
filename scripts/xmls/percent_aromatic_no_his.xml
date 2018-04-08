@@ -1,0 +1,10 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <ResidueCount name="percent_aromatic_no_his" residue_types="PHE,TRP,TYR" count_as_percentage="True" min_residue_count="0" max_residue_count="100"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="percent_aromatic_no_his"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

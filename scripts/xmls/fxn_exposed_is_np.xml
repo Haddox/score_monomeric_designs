@@ -1,0 +1,15 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <TotalSasa name="exposed_hydrophobics" confidence="0" hydrophobic="True" />
+    <TotalSasa name="exposed_total" confidence="0"/>
+    <CalculatorFilter name="fxn_exposed_is_np" equation="exposed / total" threshold="1" confidence="0">
+        <Var name="total" filter="exposed_total"/>
+        <Var name="exposed" filter="exposed_hydrophobics"/>
+    </CalculatorFilter>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="fxn_exposed_is_np" />
+</PROTOCOLS>
+</ROSETTASCRIPTS>

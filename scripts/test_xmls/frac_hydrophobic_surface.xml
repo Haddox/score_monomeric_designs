@@ -1,0 +1,16 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<RESIDUE_SELECTORS>
+    # Selects surface residues using number of side-chain neighbors, using
+    # the default cutoff of 2.0 below which a residue is considered to
+    # be on the surface
+    <Layer name="surface" select_surface="true" />
+</RESIDUE_SELECTORS>
+<FILTERS>
+    <ResidueCount name="frac_hydrophobic_surface" include_property="HYDROPHOBIC" count_as_percentage="True" min_residue_count="0" max_residue_count="100" residue_selector="surface"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="frac_hydrophobic_surface"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

@@ -1,0 +1,10 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <TotalSasa name="exposed_total" confidence="0"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="exposed_total" />
+</PROTOCOLS>
+</ROSETTASCRIPTS>

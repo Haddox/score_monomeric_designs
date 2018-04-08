@@ -1,0 +1,18 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<TASKOPERATIONS>
+    <LayerDesign name="layer_core_SCN" layer="core" verbose="true" use_sidechain_neighbors="True" core="5.2" />
+</TASKOPERATIONS>
+<FILTERS>
+    <ResidueCount name="res_count_core_SCN" task_operations="layer_core_SCN" max_residue_count="9999" confidence="0"/>
+    <ResidueCount name="res_count_all" max_residue_count="9999" confidence="0"/>
+    <CalculatorFilter name="percent_core_stringent" equation="rescount_coreSCN / (rescount3 + 0.01)" threshold="-0.35" confidence="0" >
+        <Var name="rescount3" filter="res_count_all"/>
+        <Var name="rescount_coreSCN" filter="res_count_core_SCN"/>
+    </CalculatorFilter>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="percent_core_stringent"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>
