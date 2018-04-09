@@ -2,6 +2,7 @@
 Score designs using `PyRosetta` and a series of input RosettaScript XMLs
 """
 
+# Import `Python` modules
 import os
 import sys
 import argparse
@@ -12,10 +13,17 @@ import scipy.stats
 import numpy
 import math
 import jug
+import subprocess
 
-# Import and initialize PyRosetta and Rosetta
+# Import custom scripts
+scriptsdir = os.path.dirname(__file__)
+sys.path.append(scriptsdir)
+import external_scoring
+
+# Import and initialize `PyRosetta` and `Rosetta`
 import pyrosetta
 import pyrosetta.rosetta
+import pyrosetta.distributed.io as io
 
 # Score the PDB files
 def layer_selector_mover(layer, core_cutoff=3.7, surface_cutoff=1.3):
@@ -56,7 +64,7 @@ def layer_selector_mover(layer, core_cutoff=3.7, surface_cutoff=1.3):
     return select_layer
 
 @jug.TaskGenerator
-def score_pdb_file(pdb_file_name):
+def score_pdb_file(pdb_file_name, output_dir):
     """
     Score an input PDB file using an array of Rosetta-based metrics
 
@@ -64,7 +72,9 @@ def score_pdb_file(pdb_file_name):
     RosettaScripts XML files in the directory `./scripts/xmls/`.
 
     Args:
-        `pdb_file_name` : The path to a PDB file (string)
+        `pdb_file_name`: The path to a PDB file (string)
+        `output_dir`: The path to a directory where temporary files
+            will be stored and then deleted.
 
     Returns:
         A dataframe with scores for the PDB file
@@ -75,12 +85,12 @@ def score_pdb_file(pdb_file_name):
 
     # Compute scores from energies from the score function and store
     # the scores in a dictionary with the form {score name : value}
-    scores_dict = {}
+    rs_scores_dict = {}
     scorefxn(pose)
     for score in scorefxn.get_nonzero_weighted_scoretypes():
         re_pattern = re.compile(r'ScoreType\.(?P<score_name>\w+)')
         score_name = re_pattern.search(str(score)).group('score_name')
-        scores_dict[score_name] = pose.energies().total_energies()[score]
+        rs_scores_dict[score_name] = pose.energies().total_energies()[score]
 
     # Compute XML-based scores and add these scores to the dictionary
     # with all the scores
@@ -89,17 +99,47 @@ def score_pdb_file(pdb_file_name):
         # See if the scoring works
         try:
             print("Scoring the design {0} with the filter: {1}".format(pdb_file_name, filter_name))
-            scores_dict[filter_name] = pr_filter.score(pose)
+            rs_scores_dict[filter_name] = pr_filter.score(pose)
 
         # If there is a RuntimeError, put "Error" for the given pose/feature
         except RuntimeError:
             #logger.exception("Error processing feature: %s" % feature_name)
-            scores_dict[filter_name] = 'RuntimeError'
-
+            rs_scores_dict[filter_name] = 'RuntimeError'
+    
     # Conver the dictionary to a dataframe with the PDB file name as an index
-    scores_df = pandas.DataFrame.from_dict({pdb_file_name : scores_dict}, orient='index')
+    rs_scores = pandas.DataFrame.from_dict({pdb_file_name : rs_scores_dict}, orient='index')        
+            
+    # Compute external scores
+    resultsdir  = os.path.join(
+        output_dir,
+        'temp_{0}/'.format(
+            os.path.splitext(pdb_file_name)[0].replace('/', '_')
+        )
+    )
+    output_score_file_prefix = 'score'
+    external_scores_dict = external_scoring.generate_enhanced_score_summary_table(
+        {pdb_file_name : io.pose_from_file(pdb_file_name)},
+        scriptsdir,
+        resultsdir,
+        output_score_file_prefix
+    )
+    external_scores = pandas.DataFrame.from_dict(external_scores_dict)
+    external_scores.set_index('Unnamed: 0', inplace=True)
 
-    return scores_df
+    # Remove the temporary results directory
+    subprocess.check_call(['rm', '-r', resultsdir])
+
+    # Merge scores
+    assert all(rs_scores.index.values == external_scores.index.values)
+    rs_metrics = list(rs_scores.columns.values)
+    external_metrics = list(external_scores.columns.values)
+    unique_external_metrics = [m for m in external_metrics if m not in rs_metrics]
+    merged_scores = pandas.concat(
+        [rs_scores, external_scores[unique_external_metrics]],
+        axis=1
+    )
+
+    return merged_scores
 
 @jug.TaskGenerator
 def write_results(results_file, sub_results):
@@ -112,10 +152,10 @@ def write_results(results_file, sub_results):
     print("Writing the results to the file: {0}".format(results_file))
     scores_all_pdbs.to_csv(results_file)
 
+    
 #---------------------------------------------------------------
 # Initialize relevant Movers and Filters in PyRosetta
 #---------------------------------------------------------------
-
 # Initialize a specific score function
 pyrosetta.init(extra_options='-beta')
 scorefxn = pyrosetta.get_score_function()
@@ -140,34 +180,28 @@ pr_filters = {
 
 }
 
-#---------------------------------------------------------------
-# Read in command-line arguments and score each PDB file
-#---------------------------------------------------------------
 
+#---------------------------------------------------------------
+# Read in command-line arguments and input PDB files
+#---------------------------------------------------------------
 # Read in command-line arguments using `argparse`
 parser = argparse.ArgumentParser()
 parser.add_argument("pdb_dir", help="the path to a directory with input PDB files")
-parser.add_argument("out_file_name", help="the name of the output scores file")
+parser.add_argument("output_dir", help="the path to a directory where the output will be stored")
 args = parser.parse_args()
-(pdb_dir, out_file_name) = (args.pdb_dir, args.out_file_name)
+(pdb_dir, output_dir) = (args.pdb_dir, args.output_dir)
+out_file_name = os.path.join(output_dir, 'scores.csv')
 
 # Get the input PDB files
 input_pdb_files = glob.glob(os.path.join(pdb_dir, '*.pdb'))
 
-# Score each PDB file one at a time
-#scores_dfs = [score_pdb_file(f) for f in input_pdb_files]
-
-# Concatenate each of the PDB-specific dataframes
-#scores_df = pandas.concat(scores_dfs)
-#scores_df.to_csv(out_file_name)
 
 #---------------------------------------------------------------
-# Compute the scores
+# Use `Jug` to compute the scores for each PDB file in parallel
+# and the results to a file
 #---------------------------------------------------------------
-
 # Score the PDB files
 write_results(
     out_file_name,
-    [ score_pdb_file(f) for f in input_pdb_files ]
+    [ score_pdb_file(f, output_dir) for f in input_pdb_files ]
 )
-

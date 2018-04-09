@@ -1,0 +1,12 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<TASKOPERATIONS>
+</TASKOPERATIONS>
+<FILTERS>
+    <TotalSasa name="nonpolar" hydrophobic="True" confidence="1"  report_per_residue_sasa="True" threshold="0"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="nonpolar"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

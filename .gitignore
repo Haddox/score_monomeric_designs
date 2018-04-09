@@ -1,3 +1,10 @@
+### Jug output directories ###
+**/jugdir/
+
+### __pycache__ ###
+__pycache__/
+*/__pycache__/
+
 ### JupyterNotebook ###
 .ipynb_checkpoints*
 */.ipynb_checkpoints/*
