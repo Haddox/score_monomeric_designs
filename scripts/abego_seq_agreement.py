@@ -1,7 +1,9 @@
-#!/usr/local/bin/python
+# Import Python modules
 import sys
 import Bio.PDB
 from numpy import pi, average
+
+
 penalties = {}
 aas = 'ACDEFGHIKLMNPQRSTVWY'
 with open('/work/grocklin/nr_pdb/pdb_files/penalty_table') as file:
@@ -16,9 +18,6 @@ def phi_psi_omega_to_abego(phi, psi, omega):
     phi = 180 * phi / pi
     psi = 180 * psi / pi
     omega = 180 * omega / pi
-
-
-
 
     if abs(omega) < 90:
         return 'O'
@@ -64,19 +63,36 @@ def main( files ):
 
     output = ""
     for (filenum, fn) in enumerate(files):
+
+        # Read in the structure from the PDB file and make sure there's only one
+        # chain
+        structure = Bio.PDB.PDBParser(QUIET=True).get_structure(fn,fn)
         phi_psi = []
         nres=[]
         seqs = []
-        structure = Bio.PDB.PDBParser(QUIET=True).get_structure(fn,fn)
-        for chain in structure:
-            polypeptides = Bio.PDB.PPBuilder().build_peptides(chain)
-            for polypeptide in polypeptides:
-                nres.append(len(polypeptide))
-                seqs.append(polypeptide.get_sequence())
-                if len(nres) > 1:
-                    nres[-1] = nres[-1] + nres[-2]
-                phi_psi += polypeptide.get_phi_psi_list()
+        chain_list = Bio.PDB.Selection.unfold_entities(structure, 'C')
+        assert len(chain_list) == 1, "There is more than one chain in: {0}".format(fn)
+        chain = chain_list[0]
+
+        # Cycle through all polypeptides in the chain and record the sequence
+        # and phi_psi angles
+        polypeptides = Bio.PDB.PPBuilder().build_peptides(chain)
+        for polypeptide in polypeptides:
+            seqs.append(polypeptide.get_sequence())
+            phi_psi += polypeptide.get_phi_psi_list()
+
+        # Concatenate the sequences of different polypeptides (the phi_psi
+        # angles are already in a single list)
+        concat_seqs = seqs[0]
+        for (i, seq) in enumerate(seqs, 0):
+            if i > 0:
+                concat_seqs += seq
+        seqs = [concat_seqs]
+        nres = [len(concat_seqs)]
+
+        # Get phi, psi, and omega values for each residue
         residues = [res for res in structure.get_residues()]
+        assert len(residues) == len(phi_psi) == len(concat_seqs)
         phi_psi_omega = []
         #print fn, len(phi_psi), len(residues), nres
         for i in range(len(residues)-1):
@@ -121,7 +137,7 @@ def main( files ):
                     aa_penalties.sort()
                     #print aa_penalties
                     best_aa = aa_penalties[-1][-1]
-                    best_aa_string += best_aa 
+                    best_aa_string += best_aa
                     best_aa_scores += penalty_to_numeral(  penalties[(my_abego_string[i-1:i+2], best_aa)] )
                     scores.append(-10*term)
                     my_penalty_string += penalty_to_numeral(term)
@@ -148,7 +164,7 @@ def main( files ):
             output += fn + ' ' + my_abego_string + ' '
             output += str( average([x / -10.0 for x in scores]) ) + ' '
             output += str( average([min([x / -10.0, 0]) for x in scores]) ) + '\n'
-            output += fn + ' ' + my_penalty_string + '55\n' 
+            output += fn + ' ' + my_penalty_string + '55\n'
             output += 'opt' + (' ' * (len(fn) - 3))  + ' ' + best_aa_string + my_seq_string[-2:] + '\n' #\n\n'
             output += 'opt' + (' ' * (len(fn) - 3))  + ' ' + best_aa_scores + '55 \n\n'
         elif short_penalty:
