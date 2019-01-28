@@ -154,7 +154,8 @@ def score_pdb_file(pdb_file_name, output_dir):
 
 
     #------------------------------------------------------------------------
-    # Compute additional metrics that are custom for this analysis
+    # Compute additional metrics related to amino-acid frequencies in
+    # different parts of the structure
     #------------------------------------------------------------------------
 
     # Sum the `rama_prepro` and `p_aa_pp` terms and make columns that indicate whether
@@ -197,6 +198,15 @@ def score_pdb_file(pdb_file_name, output_dir):
                 ),
                 axis=1
             )
+
+    # Compute the frequency of each dipeptide across the entire protein
+    for i in range(len(amino_acids)):
+        for j in range(len(amino_acids)):
+            dipeptide = amino_acids[i] + amino_acids[j]
+            scores_df['freq_{0}'.format(dipeptide)] = \
+                scores_df['sequence'].apply(
+                    lambda x: x.count(dipeptide) / float(len(x) - 1)
+                )
 
     # Compute joint frequency of hydrophobic amino acids defined by the list below
     hydrophobic_amino_acids = list('AFILMVWY')
