@@ -1,0 +1,13 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<RESIDUE_SELECTORS>
+</RESIDUE_SELECTORS>
+<FILTERS>
+    # For computing the buried surface area of polar atoms over all residues
+    <BuriedSurfaceArea name="buried_psa" select_only_FAMILYVW="False" atom_mode="polar_atoms" confidence="0.0" />
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="buried_psa"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

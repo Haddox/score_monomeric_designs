@@ -1,0 +1,10 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <CavityVolume name="cavity_volume" />
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="cavity_volume" />
+</PROTOCOLS>
+</ROSETTASCRIPTS>

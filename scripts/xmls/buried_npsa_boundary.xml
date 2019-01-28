@@ -1,0 +1,16 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<RESIDUE_SELECTORS>
+    # Selects core residues using number of side-chain neighbors, using the
+    # cutoffs of 1.3 to 3.7 in between which a residues is considered to be
+    # in the boundary layer.
+    <Layer name="boundary" select_boundary="true" core_cutoff="3.7" surface_cutoff="1.3"/>
+</RESIDUE_SELECTORS>
+<FILTERS>
+    <BuriedSurfaceArea name="buried_npsa_boundary" residue_selector="boundary" select_only_FAMILYVW="False" atom_mode="hydrophobic_atoms" confidence="0.0" />
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="buried_npsa_boundary"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

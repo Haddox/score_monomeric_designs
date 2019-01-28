@@ -1,0 +1,12 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<RESIDUE_SELECTORS>
+</RESIDUE_SELECTORS>
+<FILTERS>
+    <ExposedHydrophobics name="exposed_npsa"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="exposed_npsa"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

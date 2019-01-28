@@ -1,0 +1,14 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<RESIDUE_SELECTORS>
+</RESIDUE_SELECTORS>
+<FILTERS>
+    # For computing the buried surface area of hydrophobic atoms for hydrophobic
+    # residues only
+    <BuriedSurfaceArea name="buried_npsa_FAMILYVW" select_only_FAMILYVW="True" atom_mode="hydrophobic_atoms" confidence="0.0" />
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="buried_npsa_FAMILYVW"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>

@@ -1,0 +1,180 @@
+<dock_design>
+<SCOREFXNS>
+  <SFXN7 weights="beta" >
+  </SFXN7>
+    <TotalHydrophobic weights="/work/grocklin/gabe_scripts/total_hydrophobic_weights.wts"/>
+</SCOREFXNS>
+<TASKOPERATIONS>
+    <LayerDesign name="layer_core_SCN" layer="core" pore_radius="2.0" verbose="true" use_sidechain_neighbors="True" core=4 />
+    <LayerDesign name="layer_core_SASA" layer="core" core="20" pore_radius="2.0" verbose="true" />
+    <LayerDesign name="layer_core_boundary_SCN" layer="core_boundary" pore_radius="2.0" verbose="true" use_sidechain_neighbors="True" />
+
+    <OperateOnCertainResidues name="no_ala_disulf" >
+      <RestrictToRepackingRLT />
+      <ResidueName3Is name3="ALA" />
+    </OperateOnCertainResidues>
+
+    <OperateOnCertainResidues name="no_repack_non-disulf" >
+      <PreventRepackingRLT/>
+      <ResidueName3Isnt name3="CYS" />
+    </OperateOnCertainResidues>
+
+</TASKOPERATIONS>
+
+<FILTERS>
+  ###############################################
+  # These are the actual filters which score things
+  ###############################################
+    <AverageDegree name="degree_core_SCN" task_operations="layer_core_SCN" confidence="0" threshold="9.4" />
+    <AverageDegree name="degree_core_SASA" task_operations="layer_core_SASA" confidence="0" threshold="9.4" />
+    <AverageDegree name=degree confidence=0 threshold=9.5/>
+    <ResidueCount name="res_count_all" max_residue_count="9999" confidence="0"/>
+    <ResidueCount name="res_count_core_SCN" task_operations="layer_core_SCN,no_ala_disulf" max_residue_count="9999" confidence="0"/>
+    <ResidueCount name="res_count_core_SASA" task_operations="layer_core_SASA,no_ala_disulf" max_residue_count="9999" confidence="0"/>
+   
+    <ResidueCount name="nres_cys" residue_types="CYS" confidence="0" />
+    <ResidueCount name="AlaCount" residue_types="ALA" max_residue_count="9999" confidence="0"/>
+
+  <TotalSasa name="total_sasa" threshold="1" upper_threshold="1000000000000000" report_per_residue_sasa="False" confidence="0" />
+
+  
+    <CalculatorFilter name="mean_sasa" equation="Tsasa / (rescount2 + 0.01)" threshold="-0.30" confidence="0" >
+        <VAR name="Tsasa" filter="total_sasa"/>
+        <VAR name="rescount2" filter="res_count_all"/>
+    </CalculatorFilter>
+    <CalculatorFilter name="percent_core_SCN" equation="rescount_coreSCN / (rescount3 + 0.01)" threshold="-0.35" confidence="0" >
+        <VAR name="rescount3" filter="res_count_all"/>
+        <VAR name="rescount_coreSCN" filter="res_count_core_SCN"/>
+    </CalculatorFilter>
+    <CalculatorFilter name="percent_core_SASA" equation="rescount_coreSASA / (rescount4 + 0.01)" threshold="-0.35" confidence="0" >
+        <VAR name="rescount4" filter="res_count_all"/>
+        <VAR name="rescount_coreSASA" filter="res_count_core_SASA"/>
+    </CalculatorFilter>
+  <AtomicContactCount name="contact_all" confidence="0" />
+    <AtomicContactCount name="contact_core_SCN" task_operations="layer_core_SCN" confidence="0" />
+    <AtomicContactCount name="contact_core_SASA" task_operations="layer_core_SASA" confidence="0" />
+
+  <ResidueCount name="nres" confidence="0" />
+  <ScoreType name="dslf_fa13" scorefxn=SFXN7 score_type=dslf_fa13 threshold=0/>
+    <CalculatorFilter name=mean_dslf equation="dslf / (cyscount+0.01)" threshold="-0.35" confidence=0>
+      <VAR name="dslf" filter="dslf_fa13"/>
+      <VAR name="cyscount" filter="nres_cys"/>
+  </CalculatorFilter>
+
+  <DisulfideEntropy name="entropy" lower_bound="0" tightness="2" confidence="0"/>
+  <TaskAwareScoreType name="dslf_quality_check" task_operations="no_repack_non-disulf" score_type="dslf_fa13"  mode="individual" threshold="-0.27" confidence="0" />
+
+
+
+  <ScoreType name="hbond_sfn" scorefxn=SFXN7 score_type=hbond_lr_bb threshold=0/>
+
+
+  <SSShapeComplementarity name="ss_sc" verbose="0" confidence="0" />
+  <SSShapeComplementarity name="helix_sc" verbose="1" loops="0" helices="1" confidence="0" />
+  <SSShapeComplementarity name="loop_sc" verbose="1" loops="1" helices="0" confidence="0" />
+  
+  <TotalSasa name="exposed_hydrophobics" confidence="0" hydrophobic=True />
+  <TotalSasa name="exposed_total" confidence="0"/>
+  <TotalSasa name="exposed_polars" confidence="0" polar=True />
+  
+  <CalculatorFilter name="fxn_exposed_is_np" equation="exposed / total" threshold="1" confidence=0>
+      <VAR name="total" filter="exposed_total"/>
+      <VAR name="exposed" filter="exposed_hydrophobics"/>
+  </CalculatorFilter>
+
+  <ScoreType name="total_hydrophobic" scorefxn=TotalHydrophobic threshold=0/>
+
+  <CalculatorFilter name=buried_np equation="total - exposed" threshold="1" confidence=0>
+      <VAR name="total" filter="total_hydrophobic"/>
+      <VAR name="exposed" filter="exposed_hydrophobics"/>
+  </CalculatorFilter>
+
+
+  <CalculatorFilter name=buried_over_exposed equation="buried / (exposed+0.01)" threshold="1" confidence=0>
+      <VAR name="buried" filter="buried_np"/>
+      <VAR name="exposed" filter="exposed_hydrophobics"/>
+  </CalculatorFilter>
+
+  <CalculatorFilter name=buried_minus_exposed equation="buried - exposed" threshold="1" confidence=0>
+      <VAR name="buried" filter="buried_np"/>
+      <VAR name="exposed" filter="exposed_hydrophobics"/>
+  </CalculatorFilter>
+
+  <CalculatorFilter name=bb equation="hbond / (rescount+0.01)" threshold="-0.23" confidence=0>
+      <VAR name="hbond" filter="hbond_sfn"/>
+      <VAR name="rescount" filter="nres"/>
+  </CalculatorFilter>
+
+  <CavityVolume name="cavity_volume" />
+  <PackStat name=pack confidence=0/>
+  <Holes name="holes" confidence=0/>
+
+
+  <SSPrediction name="mismatch_probability" confidence="0" cmd="/work/tlinsky/Rosetta/tools/fragment_tools/psipred/runpsipred_single" use_probability="1" mismatch_probability="1" use_svm="0" />
+    <BuriedUnsatHbonds name="unsat_hbond" confidence=0 jump_number=0/>
+    <BuriedUnsatHbonds2 name="unsat_hbond2" confidence=0 jump_number=0/>
+
+    <SecondaryStructureHasResidue name="one_core_each" secstruct_fraction_threshold="1.0" res_check_task_operations="layer_core_SCN" required_restypes="VILMFYW" nres_required_per_secstruct="1" filter_helix="1" filter_sheet="1" filter_loop="0" min_helix_length="4" min_sheet_length="3" min_loop_length="1" confidence="0" />
+    <SecondaryStructureHasResidue name="two_core_each" secstruct_fraction_threshold="1.0" res_check_task_operations="layer_core_SCN" required_restypes="VILMFYW" nres_required_per_secstruct="2" filter_helix="1" filter_sheet="1" filter_loop="0" min_helix_length="4" min_sheet_length="3" min_loop_length="1" confidence="0" />
+    <SecondaryStructureHasResidue name="ss_contributes_core" secstruct_fraction_threshold="1.0" res_check_task_operations="layer_core_boundary_SCN" required_restypes="VILMFYW" nres_required_per_secstruct="1" filter_helix="1" filter_sheet="1" filter_loop="0" min_helix_length="4" min_sheet_length="3" min_loop_length="1" confidence="0" />
+    
+
+
+    RotamerBoltzmannWeight name="rotamer_boltz_core_avg" task_operations="design_central_residues" skip_ala_scan="1" no_modified_ddG="1" confidence="0" unbound="0" />
+    <FragmentLookupFilter name="faulty_fragments_tolerant" lookup_name="source_fragments_4_mer_tolerant" store_path="/lab/databases/VALL_clustered/backbone_profiler_database_06032014" lookup_mode="first" chain="2" threshold="999999" confidence="0" />
+    <FragmentLookupFilter name="faulty_fragments" lookup_name="source_fragments_4_mer" store_path="/lab/databases/VALL_clustered/backbone_profiler_database_06032014" lookup_mode="first" chain="2" threshold="999999" confidence="0" />
+
+</FILTERS>
+
+<MOVERS>
+  # DSSP
+
+</MOVERS>
+
+<PROTOCOLS>
+
+  # then score/filter
+
+  <Add filter_name="res_count_core_SCN" />
+  <Add filter_name="res_count_core_SASA" />
+  <Add filter_name="percent_core_SCN" />
+  <Add filter_name="percent_core_SASA" />
+    <Add filter_name="contact_all" />
+    <Add filter_name="contact_core_SCN" />
+    <Add filter_name="contact_core_SASA" />
+  <Add filter_name="degree" />
+  <Add filter_name="entropy" />
+  <Add filter_name="dslf_quality_check" />
+  <Add filter_name="mean_dslf" />
+
+
+  <Add filter_name="cavity_volume" />
+  <Add filter_name="ss_sc" />
+  <Add filter_name="helix_sc" />
+  <Add filter_name="loop_sc" />
+  <Add filter_name="exposed_total" />
+  <Add filter_name="exposed_hydrophobics" />
+  <Add filter_name="exposed_polars" />
+  <Add filter_name="fxn_exposed_is_np" />
+  <Add filter_name="holes" />
+  <Add filter_name="bb" />
+
+  <Add filter_name="buried_np" />
+  <Add filter_name="buried_over_exposed" />
+  <Add filter_name="buried_minus_exposed" />
+  <Add filter_name="pack" />
+  <Add filter_name="mismatch_probability" />
+    Add filter="rotamer_boltz_core_avg" />
+    Add filter_name="degree_core_SCN" />
+    Add filter_name="degree_core_SASA" />
+    <Add filter_name="unsat_hbond" />
+    <Add filter_name="unsat_hbond2" />
+    <Add filter_name="one_core_each" />
+    <Add filter_name="two_core_each" />
+    <Add filter_name="ss_contributes_core" />
+    <Add filter_name="AlaCount" />
+    Add filter_name="faulty_fragments_tolerant" />
+    Add filter_name="faulty_fragments" />
+
+</PROTOCOLS>
+</dock_design>

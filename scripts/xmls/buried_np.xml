@@ -1,0 +1,17 @@
+<SCOREFXNS>
+    <ScoreFunction name="TotalHydrophobic" weights="/work/grocklin/gabe_scripts/total_hydrophobic_weights.wts"/>
+</SCOREFXNS>
+<FILTERS>
+    <TotalSasa name="exposed_hydrophobics" confidence="0" hydrophobic="True" />
+    <TotalSasa name="exposed_total" confidence="0"/>
+
+    <ScoreType name="total_hydrophobic" scorefxn="TotalHydrophobic" threshold="0"/>
+
+    <CalculatorFilter name="buried_np" equation="total - exposed" threshold="1" confidence="0">
+        <Var name="total" filter="total_hydrophobic"/>
+        <Var name="exposed" filter="exposed_hydrophobics"/>
+    </CalculatorFilter>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="buried_np" />
+</PROTOCOLS>

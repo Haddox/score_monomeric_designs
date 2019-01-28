@@ -1,0 +1,10 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<FILTERS>
+    <Holes name="holes" confidence="0"/>
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="holes" />
+</PROTOCOLS>
+</ROSETTASCRIPTS>

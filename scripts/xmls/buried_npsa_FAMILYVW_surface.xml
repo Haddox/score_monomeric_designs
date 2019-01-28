@@ -1,0 +1,15 @@
+<ROSETTASCRIPTS>
+<MOVERS>
+</MOVERS>
+<RESIDUE_SELECTORS>
+    # Selects surface residues using number of side-chain neighbors, using
+    # the cutoff of 1.3 below which a residue is considered to be on the surface
+    <Layer name="surface" select_surface="true" core_cutoff="3.7" surface_cutoff="1.3"/>
+</RESIDUE_SELECTORS>
+<FILTERS>
+    <BuriedSurfaceArea name="buried_npsa_FAMILYVW_surface" residue_selector="surface" select_only_FAMILYVW="True" atom_mode="hydrophobic_atoms" confidence="0.0" />
+</FILTERS>
+<PROTOCOLS>
+    <Add filter_name="buried_npsa_FAMILYVW_surface"/>
+</PROTOCOLS>
+</ROSETTASCRIPTS>
