@@ -117,10 +117,11 @@ def generate_enhanced_score_summary_table(
 
     # Use `./scripts/enhance_scores.py` to compute additional non-RosettaScripts
     # scores
-    print("Computing additional non-RosettaScripts scores with `enhance_scorefile.py`", file=sys.stderr)
+    print("Computing additional non-RosettaScripts scores with `enhance_scorefile.py` with the input CSV file {0}".format(csv_inputfile), file=sys.stderr)
     result_data = subprocess.check_output(
         ['python2', '{0}/enhance_scorefile.py'.format(scriptsdir), csv_inputfile])
 
+    print("result_data", result_data)
     return json.loads(result_data.decode())
 
 class TestExternalScoring(unittest.TestCase):

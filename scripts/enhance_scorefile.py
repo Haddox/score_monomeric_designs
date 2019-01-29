@@ -529,4 +529,5 @@ score_dict['description'] = desc_column
 
 # Output the results in `json` format as a dictionary, outputting it to the
 # terminal using sys.stdout
+print >> sys.stderr, "Concluded enhance_scorefile.py and will return results"
 json.dump(fp=sys.stdout, obj=score_dict.to_dict(orient="records"), indent=2)
