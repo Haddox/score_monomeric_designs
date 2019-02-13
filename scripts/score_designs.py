@@ -254,7 +254,6 @@ scorefxn = pyrosetta.get_score_function()
 # Import the content of the input XML files, and store them in a dictionary
 # of the form {metric name : script contents}
 script_files = glob.glob(os.path.join(scriptsdir, 'xmls', "*.xml"))
-script_files = script_files[:1]
 def _read(f):
     with open(f) as inf:
         return inf.read()
