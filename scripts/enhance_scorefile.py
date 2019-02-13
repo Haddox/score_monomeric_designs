@@ -187,8 +187,13 @@ else:
 for line in lines:
     seq = line.split()[1]
     seq_to_abego_terms[seq] = [float(x) for x in line.split()[-2:]]
-score_dict['abego_res_profile'] = score_dict['sequence'].map(lambda x: float(seq_to_abego_terms[x][-2]))
-score_dict['abego_res_profile_penalty'] = score_dict['sequence'].map(lambda x: float(seq_to_abego_terms[x][-1]))
+
+score_dict['abego_res_profile'] = score_dict['sequence'].map(
+    lambda x: float(seq_to_abego_terms[x][-2]) if x in seq_to_abego_terms.keys() else "KeyError: {0}".format(x)
+)
+score_dict['abego_res_profile_penalty'] = score_dict['sequence'].map(
+    lambda x: float(seq_to_abego_terms[x][-1]) if x in seq_to_abego_terms.keys() else "KeyError: {0}".format(x)
+)
 
 #helix handedness
 # seq_to_3helix_handedness = {}
