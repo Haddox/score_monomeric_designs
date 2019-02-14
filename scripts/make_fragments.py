@@ -1,4 +1,8 @@
-#!/usr/bin/env python
+"""
+Python script for making and analyzing fragments for an input protein design
+"""
+
+
 from argparse import ArgumentParser
 import os
 import glob

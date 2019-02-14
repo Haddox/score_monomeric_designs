@@ -1,10 +1,15 @@
-#!/usr/local/bin/python
+"""
+Python script for computing structural metrics relating to the sequence and
+ABEGO types
+"""
+
 import sys
 import Bio.PDB
 from numpy import pi, average
 penalties = {}
 aas = 'ACDEFGHIKLMNPQRSTVWY'
-with open('/work/grocklin/nr_pdb/pdb_files/penalty_table') as file:
+script_dir = path.dirname(__file__)
+with open(os.path.join(script_dir, 'penalty_table')) as file:
     for line in file.readlines():
         abego_aa = tuple(line.split()[0:2])
         penalties[abego_aa] = float(line.split()[-2])
@@ -121,7 +126,7 @@ def main( files ):
                     aa_penalties.sort()
                     #print aa_penalties
                     best_aa = aa_penalties[-1][-1]
-                    best_aa_string += best_aa 
+                    best_aa_string += best_aa
                     best_aa_scores += penalty_to_numeral(  penalties[(my_abego_string[i-1:i+2], best_aa)] )
                     scores.append(-10*term)
                     my_penalty_string += penalty_to_numeral(term)
@@ -148,7 +153,7 @@ def main( files ):
             output += fn + ' ' + my_abego_string + ' '
             output += str( average([x / -10.0 for x in scores]) ) + ' '
             output += str( average([min([x / -10.0, 0]) for x in scores]) ) + '\n'
-            output += fn + ' ' + my_penalty_string + '55\n' 
+            output += fn + ' ' + my_penalty_string + '55\n'
             output += 'opt' + (' ' * (len(fn) - 3))  + ' ' + best_aa_string + my_seq_string[-2:] + '\n' #\n\n'
             output += 'opt' + (' ' * (len(fn) - 3))  + ' ' + best_aa_scores + '55 \n\n'
         elif short_penalty:

@@ -1,4 +1,7 @@
-#!/work/grocklin/local/anaconda/bin/python
+"""
+Python script for computing a variety of structural metrics
+"""
+
 import numpy as np
 import pandas as pd
 import sys
@@ -6,7 +9,6 @@ import os
 import json
 
 import np_aa_burial
-sys.path.append('/work/grocklin/gabe_scripts/')
 # import commands
 import subprocess
 import get_seq

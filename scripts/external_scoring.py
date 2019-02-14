@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+"""
+Python script for computing a variety of structural metrics that, for the most
+part are NOT encoded in RosettaScripts XMLs
+"""
 
 import unittest
 import pandas
