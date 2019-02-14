@@ -138,10 +138,6 @@ def score_pdb_file(pdb_file_name, output_dir):
     external_scores = pandas.DataFrame.from_dict(external_scores_dict)
     external_scores.set_index('Unnamed: 0', inplace=True)
 
-    # Remove the temporary results directory and the dssp file
-    subprocess.check_call(['rm', '-r', resultsdir])
-    subprocess.check_call(['rm', '-f', pdb_file_name+'.dssp'])
-
     # Merge scores
     assert all(rs_scores.index.values == external_scores.index.values)
     rs_metrics = list(rs_scores.columns.values)
@@ -220,6 +216,10 @@ def score_pdb_file(pdb_file_name, output_dir):
             axis=1
         )
 
+    #------------------------------------------------------------------------
+    # Compute additional metrics related to buried hydrogen bonds
+    #------------------------------------------------------------------------
+
     # Compute the number of buried hydrogen bonds using VSASA to determine burial,
     # with a burial cutoff of 0.1, as is used in the `BuriedUnsatHbonds` filter
     vsasa_burial_cutoff = 0.1
@@ -231,6 +231,85 @@ def score_pdb_file(pdb_file_name, output_dir):
         scores_df['buried_hbonds_info'] = buried_h_bonds
         scores_df['n_buried_hbonds'] = 0
 
+    #------------------------------------------------------------------------
+    # Compute additional metrics related to per-site fragment quality
+    #------------------------------------------------------------------------
+
+    # Compute the average fragment quality among all 9mers
+    # centered upon a given site. To so do, I will first
+    # read in data on site-specific 9mer fragment quality
+    fragment_resultsdir = os.path.join(
+        resultsdir,
+        "fragment_qual_results"
+    )
+    frag_qual_file = glob.glob(os.path.join(
+        fragment_resultsdir,
+        '*_fragments',
+        'frag_qual.dat'
+    ))
+    assert len(frag_qual_file) == 1, frag_qual_file
+    frag_qual_file = frag_qual_file[0]
+    names = ['fragment_size', 'position', 'fragment_index', 'rms', 'x', 'y']
+    frag_qual_df = pandas.read_csv(
+        frag_qual_file, sep='\s+', names=names
+    )
+    assert sum(frag_qual_df['fragment_size'] == 9) == len(frag_qual_df), \
+        "Not all fragments are 9mers"
+
+    # Next, for each site in the protein, I will compute the average
+    # fragment quality (i.e., RMS between design and fragment) of all
+    # 9mer fragments that are centered on that site. Thus, there will
+    # be no data for the first four and last four residues, since
+    # they are never in the middle of any fragments.
+    frag_qual_df['centered_position'] = frag_qual_df['position'] + 4
+    avg_frag_qual_dict = {
+        key : []
+        for key in ['centered_position', 'avg_rms']
+    }
+    for position in list(set(frag_qual_df['centered_position'])):
+        avg_frag_qual_dict['centered_position'].append(position)
+        avg_frag_qual_dict['avg_rms'].append(
+            frag_qual_df[
+                frag_qual_df['centered_position'] == position
+            ]['rms'].mean()
+        )
+    avg_frag_qual_df = pandas.DataFrame.from_dict(avg_frag_qual_dict)
+    avg_frag_qual_df.sort_values(
+        'centered_position', ascending=True, inplace=True
+    )
+    avg_all_frags_per_site = list(avg_frag_qual_df['avg_rms'])
+    scores_df['avg_all_frags_per_site'] = ','.join(
+        map(str, avg_all_frags_per_site)
+    )
+
+    # Next, compute the average fragment quality over all sites
+    # in different elements of secondary structure, specifically:
+    # helices, strands, and loops
+    assert len(scores_df) == 1, scores_df
+    secondary_structure = list(scores_df['secondary_structure'][0])[4:-4]
+    ss_types = ['L', 'H', 'E']
+    frag_qual_ss_dict = {
+        key : []
+        for key in ss_types
+    }
+    for (ss, avg_frag_qual) in zip(secondary_structure, avg_all_frags_per_site):
+        frag_qual_ss_dict[ss].append(avg_frag_qual)
+    for ss_type in ss_types:
+        if len(frag_qual_ss_dict[ss_type]) == 0:
+            scores_df['avg_all_frags_in_{0}'.format(ss_type)] = numpy.nan
+        else:
+            scores_df['avg_all_frags_in_{0}'.format(ss_type)] = \
+                pandas.Series(frag_qual_ss_dict[ss_type]).mean()
+
+    #------------------------------------------------------------------------
+    # Remove temporary files and folders and return all data in the `scores_df`
+    # dataframe
+    #------------------------------------------------------------------------
+    # Remove the temporary results directory and the dssp file
+    #subprocess.check_call(['rm', '-r', resultsdir])
+    subprocess.check_call(['rm', '-f', pdb_file_name+'.dssp'])
+
+    # Return all data in dataframe
     return scores_df
 
 @jug.TaskGenerator
@@ -254,6 +333,7 @@ scorefxn = pyrosetta.get_score_function()
 # Import the content of the input XML files, and store them in a dictionary
 # of the form {metric name : script contents}
 script_files = glob.glob(os.path.join(scriptsdir, 'xmls', "*.xml"))
+script_files = script_files[:1]
 def _read(f):
     with open(f) as inf:
         return inf.read()

@@ -2,7 +2,8 @@
 Python script for computing structural metrics relating to the sequence and
 ABEGO types
 """
-
+import os
+from os import path
 import sys
 import Bio.PDB
 from numpy import pi, average

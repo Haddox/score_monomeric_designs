@@ -94,7 +94,7 @@ def generate_enhanced_score_summary_table(
     if not path.exists(fragment_resultsdir):
         os.makedirs(fragment_resultsdir)
 
-    # Generate and score fragments with the script `./scripts/make_fragments.py`
+    # Generate and score fragments with the script `scripts/make_fragments.py`
     print("Generating and scoring fragments with `make_fragments.py`", file=sys.stderr)
     print("Storing the results in the directory: {0}".format(fragment_resultsdir))
     input_pdb_list = list(input_poses.keys())
@@ -118,7 +118,7 @@ def generate_enhanced_score_summary_table(
             stderr=subprocess.PIPE, stdout=f
         )
 
-    # Use `./scripts/enhance_scores.py` to compute additional non-RosettaScripts
+    # Use `scripts/enhance_scores.py` to compute additional non-RosettaScripts
     # scores
     print("Computing additional non-RosettaScripts scores with `enhance_scorefile.py` with the input CSV file {0}".format(csv_inputfile), file=sys.stderr)
     result_data = subprocess.check_output(
