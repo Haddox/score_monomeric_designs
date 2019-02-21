@@ -11,7 +11,7 @@ def burial_info(x):
     # TODO: Right now the below line uses RosettaScripts to run an XML. It has
     # external dependencies. We should change this so that it works internally,
     # and use the pyrosetta.distributed module if possible.
-    out = commands.getoutput('/software/rosetta/latest/bin/rosetta_scripts.hdf5.linuxgccrelease -parser:protocol ./scripts/residue_burial_nodes.xml -s %s -nooutput' % fn).split('\n')
+    out = commands.getoutput('/software/rosetta/versions/v2019.01-dev60566/bin/rosetta_scripts.hdf5.linuxgccrelease -parser:protocol ./scripts/residue_burial_nodes.xml -s %s -nooutput' % fn).split('\n')
 
     out = [x.strip() for x in out]
 
