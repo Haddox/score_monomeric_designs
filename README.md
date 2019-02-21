@@ -6,21 +6,25 @@ This pipeline computes an array of biophysical metrics for an input set of monom
 
 Note: There are many ways that this pipeline can be improved! Please feel free to make improvements that you come up with and push them to the repository. That could be anything from making better documentation, expanding the number of metrics compute, or fixing errors that cause the pipeline to crash.
 
-## Contributers
+## Author contributions
+
 Gabe Rocklin wrote the original code from Rocklin et al. Hugh Haddox, Alex Ford, and Gabe Rocklin adapted and expanded it into its current form in this repository.
 
 ## Organization of code
 
-* `scripts/`: is a directory with all code in the scoring pipeline
+* `scripts/`: is a directory with a series of `Python` scripts that encode the scoring pipeline.
 * `test_scoring.ipynb`: a notebook that runs the pipeline on ten structures from Rocklin et al., and then checks to see that the results from the pipeline match the results of the publication.
 * `environment.yml`: a file listing a number of dependecies that are installable via `Conda` (see below).
 
-## External dependencies
+## Installing external dependencies
 
-Carrying out the pipeline requires multiple external dependencies described below. Currently, some of these dependencies are only available on the Baker lab server, though I'm working to remove these dependencies.
+Carrying out the pipeline requires multiple external dependencies. Unfortunately, the full set of required external dependencies are only available on the Baker lab server at this time. This includes:
+* `PyRosetta`, as installed using `Conda` (see below).
+* a few of the custom `Python` scripts for carying out the pipeline (e.g., `scripts/make_fragments.py` and `scripts/np_aa_burial.py`) refer to other scripts and programs on the Baker lab server that have not yet been extracted.
 
-* Nearly all dependencies, including `PyRosetta`, are installable via [`Conda`](https://conda.io/docs/index.html), and are encoded in the file called `environment.yml`. These dependencies can be installed as described [here](https://conda.io/docs/user-guide/tasks/manage-environments.html) using the following command: ```conda env create -f environment.yml```. Note: currently, this file has dependencies on the Baker lab server, specifically relating to how `PyRosetta` is installed.
-* The script for generating fragments (`scripts/make_fragments.py`) has multiple dependencies on the Baker lab server.
+Nearly all dependencies are encoded in the file called `environment.yml`. If you're working on the Baker lab server, these dependencies can all be installed using [`Conda`](https://conda.io/docs/index.html). To do so, first clone this repository. Then, in the root directory of the repository, execute the command:
+
+    conda env create -f environment.yml
 
 ## How to run the pipeline
 
