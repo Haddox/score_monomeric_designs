@@ -6,10 +6,6 @@ This pipeline computes an array of biophysical metrics for an input set of monom
 
 Note: There are many ways that this pipeline can be improved! Please feel free to make improvements that you come up with and push them to the repository. That could be anything from making better documentation, expanding the number of metrics compute, or fixing errors that cause the pipeline to crash.
 
-## Author contributions
-
-Gabe Rocklin wrote the original code from Rocklin et al. Hugh Haddox, Alex Ford, and Gabe Rocklin adapted and expanded it into its current form in this repository.
-
 ## Organization of code
 
 * `scripts/`: is a directory with a series of `Python` scripts that encode the scoring pipeline.
