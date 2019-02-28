@@ -75,8 +75,15 @@ In each of the above cases, I suggest deleting all temporary files and directori
 
 Most metrics are described in the supplemental material of [Rocklin, 2017, Science](http://science.sciencemag.org/content/357/6347/168). Below are descriptions of some of the new metrics:
 
-* `avg_all_frags_per_site`: a string with comma-delimited entries that report the average fragment quality within a sliding window centered upon each site. Specifically, these values are reported for each site that sits at the center of a 9mer window in the protein. Values are ordered by sites, and there are no values for the first four or last four sites in the protein since these sites do not sit at the center of any 9mer windows. Fragment quality is quantified as the RMS between the design and 9mer fragment. The reported number of each site is the average RMS over all fragments in a given window.
-* `avg_all_frags_in_H`, `avg_all_frags_in_E`, `avg_all_frags_in_L`: each of these metrics is a float that gives the average fragment quality of all 9mers centered on sites in a given secondary structure (H: helix, E: strand, L: loop). Specifically, each value is computed using by considering all sites within a given structure, and averaging the corresponding site-specific values given in `avg_all_frags_per_site`.
+**Metrics related to fragment quality:**
+* `avg_all_frags_site_{N}`: for site `N` in the protein, the average RMS between the designed 9mer fragment centered in primary sequence upon that site and a set of 9mer fragments sampled from the PDB that are also centered in primary sequence upon that site.
+* `avg_all_frags_in_H`, `avg_all_frags_in_E`, `avg_all_frags_in_L`: each of these metrics is a float that gives the average fragment quality of all 9mers centered on sites in a given secondary structure (H: helix, E: strand, L: loop). Specifically, each value is computed by considering all sites within a given secondary structure, and averaging the corresponding site-specific values given in the set of columns: `avg_all_frags_site_{N}`.
+
+**Metrics related to per-residue energies:**
+* `energies_per_residue_site_{N}`: the total Rosetta energy for site `N` in the protein.
+* `avg_per_residue_energies_{N}mer_{i}`: for a given fragment of size `N` starting at site `i` in the protein, the average per-residue total Rosetta energies of all sites in the fragment. Currently, this metric is computed for Ns of: 2, 3, 4, or 5.
+* `avg_energy_for_{N}mers`, `min_energy_for_{N}mers`, `max_energy_for_{N}mers`: the average, minimum, and maximum value of all Nmers of a given size `N`. These values are computed from `avg_per_residue_energies_{N}mer_{i}`, across all sites `i`.
+
 
 ## Ways to improve pipeline
 

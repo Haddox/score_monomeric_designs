@@ -27,6 +27,36 @@ import pyrosetta
 import pyrosetta.rosetta
 import pyrosetta.distributed.io as io
 
+# Define auxiliary functions
+def get_neighbors(res_n, distance_cutoff):
+    """
+    Get a list of residues neighboring an input residue
+
+    Args:
+        `res_n`: the number of the residue to be used as the
+            focal point when selecting surrounding neighbors
+        `distance_cutoff`: the distance cutoff to use when
+            selecting neighbors. Distances between residues
+            are measured as the distance between each residue's
+            `nbr_atom`, which is C-beta for all amino acids
+            except Glycine, for which it is C-alpha.
+    Returns:
+        A list of residues neighboring the input residue, where
+            each residue is listed by its number, and where this
+            list includes the number of the input residue.
+    """
+    residue_selector = pyrosetta.rosetta.core.select.residue_selector
+    res_sel = residue_selector.ResidueIndexSelector(res_n)
+    neighbor_sel = residue_selector.NeighborhoodResidueSelector(
+        res_sel, distance_cutoff, True
+    )
+    neighbors = list(
+        pyrosetta.rosetta.core.select.get_residues_from_subset(
+            neighbor_sel.apply(pose)
+        )
+    )
+    return neighbors
+
 # Score the PDB files
 @jug.TaskGenerator
 def score_pdb_file(pdb_file_name, output_dir):
@@ -268,19 +298,16 @@ def score_pdb_file(pdb_file_name, output_dir):
     }
     for position in list(set(frag_qual_df['centered_position'])):
         avg_frag_qual_dict['centered_position'].append(position)
-        avg_frag_qual_dict['avg_rms'].append(
-            frag_qual_df[
-                frag_qual_df['centered_position'] == position
-            ]['rms'].mean()
-        )
+        avg_rms = frag_qual_df[
+            frag_qual_df['centered_position'] == position
+        ]['rms'].mean()
+        avg_frag_qual_dict['avg_rms'].append(avg_rms)
+        scores_df['avg_all_frags_site_{0}'.format(position)] = avg_rmss
     avg_frag_qual_df = pandas.DataFrame.from_dict(avg_frag_qual_dict)
     avg_frag_qual_df.sort_values(
         'centered_position', ascending=True, inplace=True
     )
     avg_all_frags_per_site = list(avg_frag_qual_df['avg_rms'])
-    scores_df['avg_all_frags_per_site'] = ','.join(
-        map(str, avg_all_frags_per_site)
-    )
 
     # Next, compute the average fragment quality over all sites
     # in different elements of secondary structure, specifically:
@@ -300,6 +327,48 @@ def score_pdb_file(pdb_file_name, output_dir):
         else:
             scores_df['avg_all_frags_in_{0}'.format(ss_type)] = \
                 pandas.Series(frag_qual_ss_dict[ss_type]).mean()
+
+    #------------------------------------------------------------------------
+    # Compute additional metrics related to per-site Rosetta energy
+    #------------------------------------------------------------------------
+
+    # Make a dataframe with the total energy of each residue, and record
+    # each residue's energy in the main dataframe returned at the end of this
+    # function
+    nres = pose.total_residue()
+    energies_dict = {
+        key : []
+        for key in ['residue', 'energy']
+    }
+    for res_n in range(1, nres+1):
+        energies_dict['residue'].append(res_n)
+        energy_n = pose.energies().residue_total_energy(res_n)
+        energies_dict['energy'].append(energy_n)
+        scores_df['energy_per_residue_site_{0}'.format(res_n)] = energy_n
+    energies_df = pandas.DataFrame.from_dict(energies_dict)
+    energies_df.sort_values('residue', inplace=True, ascending=True)
+    energies_df.set_index('residue', inplace=True)
+
+    # Make sure the per-residue energies add up to approximately
+    # the total energy
+    assert (sum(energies_df['energy']) - scorefxn(pose)) < 1e-3
+
+    # Compute the energy of all n-mers in the structure and then
+    # compute summary statistics from that list
+    fragment_sizes = [2, 3, 4, 5]
+    for fragment_size in fragment_sizes:
+        fragment_energies = []
+        for res_n in range(1, nres-fragment_size+2):
+            fragment_n = [res_n + i for i in range(fragment_size)]
+            avg_per_residue_energy_fragment_i = \
+                sum(energies_df.loc[fragment_n]['energy']) / fragment_size
+            fragment_energies.append(avg_per_residue_energy_fragment_i)
+            scores_df['avg_per_residue_energies_{0}mer_{1}'.format(
+                fragment_size, res_n
+            )] = avg_per_residue_energy_fragment_is
+        scores_df['avg_energy_for_{0}mers'.format(fragment_size)] = np.mean(fragment_energies)
+        scores_df['min_energy_for_{0}mers'.format(fragment_size)] = np.min(fragment_energies)
+        scores_df['max_energy_for_{0}mers'.format(fragment_size)] = np.max(fragment_energies)
 
     #------------------------------------------------------------------------
     # Remove temporary files and folders and return all data in the `scores_df`
@@ -329,6 +398,15 @@ def write_results(results_file, sub_results):
 # Initialize a specific score function
 pyrosetta.init(extra_options='-beta -holes:dalphaball /work/brunette/scripts/DAlphaBall.gcc')
 scorefxn = pyrosetta.get_score_function()
+
+# Tweak the score function so that it includes energies from
+# backbone hydrogen bonds when computing per-residue energies
+def fix_scorefxn(sfxn, allow_double_bb=False):
+    opts = sfxn.energy_method_options()
+    opts.hbond_options().decompose_bb_hb_into_pair_energies(True)
+    opts.hbond_options().bb_donor_acceptor_check(not allow_double_bb)
+    sfxn.set_energy_method_options(opts)
+fix_scorefxn(scorefxn)
 
 # Import the content of the input XML files, and store them in a dictionary
 # of the form {metric name : script contents}
