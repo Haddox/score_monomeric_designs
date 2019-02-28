@@ -370,6 +370,51 @@ def score_pdb_file(pdb_file_name, output_dir):
         scores_df['min_energy_for_{0}mers'.format(fragment_size)] = np.min(fragment_energies)
         scores_df['max_energy_for_{0}mers'.format(fragment_size)] = np.max(fragment_energies)
 
+    # For each residue in the protein, get a list of all neighboring residues
+    # where the C-beta atoms of each residue (C-alpha for Gly) are within X angstroms
+    distance_cutoffs = [5]
+    for distance_cutoff in distance_cutoffs:
+        energies_df['neighborhood_{0}'.format(distance_cutoff)] = \
+            energies_df.apply(
+                lambda row: get_neighbors(row.name, distance_cutoff),
+                axis=1
+            )
+        energies_df['n_neighbors_{0}'.format(distance_cutoff)] = \
+            energies_df['neighborhood_{0}'.format(distance_cutoff)].apply(
+                lambda x: len(x)
+            )
+        energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)] = \
+            energies_df.apply(
+                lambda row: sum(energies_df.loc[
+                    row['neighborhood_{0}'.format(distance_cutoff)]
+                ]['energy']) / row[
+                    'n_neighbors_{0}'.format(distance_cutoff)
+                ],
+                axis=1
+            )
+
+    # Add the above data into the main dataframe returned at the
+    # end of this function
+    for distance_cutoff in distance_cutoffs:
+
+        # First, add site-specific data
+        for (i, row) in energies_df.iterrows():
+            scores_df['avg_per_res_energy_of_site_{0}_neighborhood_{1}A'.format(row.name, distance_cutoff)] = \
+                row['energy_of_neighborhood_{0}'.format(distance_cutoff)]
+            scores_df['n_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
+                row['n_neighbors_{0}'.format(distance_cutoff)]
+
+        # Then, add summary statistics that take all sites into account
+        scores_df['avg_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].mean()
+        scores_df['min_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].min()
+        scores_df['max_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].max()
+
+
+
+
     #------------------------------------------------------------------------
     # Remove temporary files and folders and return all data in the `scores_df`
     # dataframe

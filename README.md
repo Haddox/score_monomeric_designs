@@ -84,6 +84,9 @@ Most metrics are described in the supplemental material of [Rocklin, 2017, Scien
 * `avg_per_residue_energies_{N}mer_{i}`: for a given fragment of size `N` starting at site `i` in the protein, the average per-residue total Rosetta energies of all sites in the fragment. Currently, this metric is computed for Ns of: 2, 3, 4, or 5.
 * `avg_energy_for_{N}mers`, `min_energy_for_{N}mers`, `max_energy_for_{N}mers`: the average, minimum, and maximum value of all Nmers of a given size `N`. These values are computed from `avg_per_residue_energies_{N}mer_{i}`, across all sites `i`.
 
+* `n_neighbors_site_{i}_{D}A`: for site `i`, we use `PyRosetta` to get all neighboring residues within `D` angstroms of that site (distances are measured between C-beta atoms from each residue, or C-alpha in the case of Glycine). This metric simply quantifies the number of neighbors for a given site and distance cutoff.
+* `avg_per_res_energy_of_site_{i}_neighborhood_{D}A`, `min_per_res_energy_of_site_{i}_neighborhood_{D}A`, `max_per_res_energy_of_site_{i}_neighborhood_{D}A`: for site `i`, the average, min, or max per-residue total Rosetta energy of all neighboring residues in three-dimensional space. Neighbors are defined as described for `n_neighbors_site_{i}_{D}A`.
+
 
 ## Ways to improve pipeline
 
