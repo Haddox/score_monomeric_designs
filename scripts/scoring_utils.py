@@ -1,5 +1,5 @@
 """
-Modules for scoring protein structures using `PyRosetta`
+Extra modules for scoring protein structures
 """
 
 import pandas
@@ -9,6 +9,9 @@ import pyrosetta.rosetta
 from pyrosetta.rosetta.core.scoring.hbonds import HBondSet, fill_hbond_set
 from pyrosetta.rosetta.core.select.residue_selector import LayerSelector
 from pyrosetta.bindings.utility import bind_method
+
+import Bio.PDB
+BIO_PDB_parser = Bio.PDB.PDBParser(QUIET=True)
 
 @bind_method(HBondSet)
 def __iter__(self):
@@ -259,6 +262,71 @@ def find_buried_hbonds(pose, vsasa_burial_cutoff=0.1):
         return buried_hbonds
     else:
         return None
+
+def get_residue_neighbors(pdb_file_name, res_n, distance_cutoff):
+    """
+    Get a list of residues making side-chain contacts with an
+    input residue.
+
+    Specifically, this function iterates over all side-chain
+    atoms in the target residue and finds all neighboring
+    residues with at least one side-chain atom that is within
+    a given distance cutoff of the target residue.
+
+    Args:
+        `pdb_file_name`: a path to the input PDB file
+        `res_n`: the number of the residue to be used as the
+            focal point when selecting surrounding neighbors
+        `distance_cutoff`: the distance cutoff to use when
+            selecting neighbors.
+    Returns:
+        A list of residues neighboring the input residue, where
+            each residue is listed by its number, and where this
+            list includes the number of the input residue.
+    """
+
+    # Read in the structure, specify the target residue, and
+    # make an object with all atoms in the structure
+    structure = BIO_PDB_parser.get_structure('pdb', pdb_file_name)
+    assert len(structure) == 1, len(structure)
+    chains = Bio.PDB.Selection.unfold_entities(structure, 'C')
+    assert len(chains) == 1
+    target_residue = structure[0][chains[0].get_id()][res_n]
+    atoms = Bio.PDB.Selection.unfold_entities(structure, 'A')
+
+    # Iterate over all atoms in the residue side chain and
+    # get a list of all residues that come within a given
+    # distance cutoff of each atom
+    neighboring_residues = []
+    bb_atom_ids = [
+        'N', 'H', 'CA', 'HA', 'C', 'O', '1H', '2H', '3H'
+    ]
+    for target_atom in target_residue.get_atoms():
+
+        # Continue if the atom is a backbone atom
+        if target_atom.get_id() in bb_atom_ids:
+            continue
+
+        # Make a `NeighborSearch` class object with all atoms in
+        # the structure for the query. Then, search for residues
+        # with atoms within a given distance cutoff of the target
+        # atom, and append them to a growing list
+        all_atom_neighbor_search_class = Bio.PDB.NeighborSearch(atoms)
+        neighboring_atoms = all_atom_neighbor_search_class.search(
+            center=target_atom.coord,
+            radius=distance_cutoff,
+            level='A'
+        )
+        neighboring_residues.extend([
+            atom.get_parent().get_id()[1]
+            for atom in neighboring_atoms
+            if atom.get_id() not in bb_atom_ids
+        ])
+
+    # Return a list of unique residue numbers of all the
+    # contacting residues
+    return list(set(neighboring_residues))
+
 
 if __name__ == '__main__':
     doctest.testmod()

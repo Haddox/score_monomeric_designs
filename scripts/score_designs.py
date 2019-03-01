@@ -27,35 +27,6 @@ import pyrosetta
 import pyrosetta.rosetta
 import pyrosetta.distributed.io as io
 
-# Define auxiliary functions
-def get_neighbors(res_n, distance_cutoff):
-    """
-    Get a list of residues neighboring an input residue
-
-    Args:
-        `res_n`: the number of the residue to be used as the
-            focal point when selecting surrounding neighbors
-        `distance_cutoff`: the distance cutoff to use when
-            selecting neighbors. Distances between residues
-            are measured as the distance between each residue's
-            `nbr_atom`, which is C-beta for all amino acids
-            except Glycine, for which it is C-alpha.
-    Returns:
-        A list of residues neighboring the input residue, where
-            each residue is listed by its number, and where this
-            list includes the number of the input residue.
-    """
-    residue_selector = pyrosetta.rosetta.core.select.residue_selector
-    res_sel = residue_selector.ResidueIndexSelector(res_n)
-    neighbor_sel = residue_selector.NeighborhoodResidueSelector(
-        res_sel, distance_cutoff, True
-    )
-    neighbors = list(
-        pyrosetta.rosetta.core.select.get_residues_from_subset(
-            neighbor_sel.apply(pose)
-        )
-    )
-    return neighbors
 
 # Score the PDB files
 @jug.TaskGenerator
@@ -372,11 +343,11 @@ def score_pdb_file(pdb_file_name, output_dir):
 
     # For each residue in the protein, get a list of all neighboring residues
     # where the C-beta atoms of each residue (C-alpha for Gly) are within X angstroms
-    distance_cutoffs = [5]
+    distance_cutoffs = [3, 5]
     for distance_cutoff in distance_cutoffs:
         energies_df['neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
-                lambda row: get_neighbors(row.name, distance_cutoff),
+                lambda row: scoring_utils.get_neighbors(pdb_file_name, row.name, distance_cutoff),
                 axis=1
             )
         energies_df['n_neighbors_{0}'.format(distance_cutoff)] = \
