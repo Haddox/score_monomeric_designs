@@ -273,7 +273,7 @@ def score_pdb_file(pdb_file_name, output_dir):
             frag_qual_df['centered_position'] == position
         ]['rms'].mean()
         avg_frag_qual_dict['avg_rms'].append(avg_rms)
-        scores_df['avg_all_frags_site_{0}'.format(position)] = avg_rmss
+        scores_df['avg_all_frags_site_{0}'.format(position)] = avg_rms
     avg_frag_qual_df = pandas.DataFrame.from_dict(avg_frag_qual_dict)
     avg_frag_qual_df.sort_values(
         'centered_position', ascending=True, inplace=True
@@ -336,10 +336,11 @@ def score_pdb_file(pdb_file_name, output_dir):
             fragment_energies.append(avg_per_residue_energy_fragment_i)
             scores_df['avg_per_residue_energies_{0}mer_{1}'.format(
                 fragment_size, res_n
-            )] = avg_per_residue_energy_fragment_is
-        scores_df['avg_energy_for_{0}mers'.format(fragment_size)] = np.mean(fragment_energies)
-        scores_df['min_energy_for_{0}mers'.format(fragment_size)] = np.min(fragment_energies)
-        scores_df['max_energy_for_{0}mers'.format(fragment_size)] = np.max(fragment_energies)
+            )] = avg_per_residue_energy_fragment_i
+        scores_df['avg_energy_for_{0}mers'.format(fragment_size)] = numpy.mean(fragment_energies)
+        scores_df['min_energy_for_{0}mers'.format(fragment_size)] = numpy.min(fragment_energies)
+        scores_df['max_energy_for_{0}mers'.format(fragment_size)] = numpy.max(fragment_energies)
+        scores_df['std_energy_for_{0}mers'.format(fragment_size)] = numpy.std(fragment_energies)
 
     # For each residue in the protein, get a list of all neighboring residues
     # where the C-beta atoms of each residue (C-alpha for Gly) are within X angstroms
@@ -382,7 +383,8 @@ def score_pdb_file(pdb_file_name, output_dir):
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].min()
         scores_df['max_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].max()
-
+        scores_df['std_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].std()
     # Compute the number of pairswise 3D contacts for all amino-acid pairs
     # for each distance cutoff
     for distance_cutoff in distance_cutoffs:
@@ -414,7 +416,7 @@ def score_pdb_file(pdb_file_name, output_dir):
         # Add the above counts to the main dataframe that is returned at the
         # end of this function
         for (aa_i, aa_j) in aa_pairwise_contacts_dict.keys():
-            scores_df['n_{i}{j}_3d_contacts_{D}A'.format(aa_i, aa_j, distance_cutoff)] = \
+            scores_df['n_{0}{1}_3d_contacts_{2}A'.format(aa_i, aa_j, distance_cutoff)] = \
                 aa_pairwise_contacts_dict[(aa_i, aa_j)]
 
     #------------------------------------------------------------------------
@@ -422,7 +424,7 @@ def score_pdb_file(pdb_file_name, output_dir):
     # dataframe
     #------------------------------------------------------------------------
     # Remove the temporary results directory and the dssp file
-    #subprocess.check_call(['rm', '-r', resultsdir])
+    subprocess.check_call(['rm', '-r', resultsdir])
     subprocess.check_call(['rm', '-f', pdb_file_name+'.dssp'])
 
     # Return all data in dataframe
