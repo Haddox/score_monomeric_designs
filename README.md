@@ -79,13 +79,24 @@ Most metrics are described in the supplemental material of [Rocklin, 2017, Scien
 * `avg_all_frags_site_{N}`: for site `N` in the protein, the average RMS between the designed 9mer fragment centered in primary sequence upon that site and a set of 9mer fragments sampled from the PDB that are also centered in primary sequence upon that site.
 * `avg_all_frags_in_H`, `avg_all_frags_in_E`, `avg_all_frags_in_L`: each of these metrics is a float that gives the average fragment quality of all 9mers centered on sites in a given secondary structure (H: helix, E: strand, L: loop). Specifically, each value is computed by considering all sites within a given secondary structure, and averaging the corresponding site-specific values given in the set of columns: `avg_all_frags_site_{N}`.
 
-**Metrics related to per-residue energies:**
+**Metrics related to per-residue Rosetta energies of fragments in primary sequence:**
 * `energies_per_residue_site_{N}`: the total Rosetta energy for site `N` in the protein.
 * `avg_per_residue_energies_{N}mer_{i}`: for a given fragment of size `N` starting at site `i` in the protein, the average per-residue total Rosetta energies of all sites in the fragment. Currently, this metric is computed for Ns of: 2, 3, 4, or 5.
 * `avg_energy_for_{N}mers`, `min_energy_for_{N}mers`, `max_energy_for_{N}mers`: the average, minimum, and maximum value of all Nmers of a given size `N`. These values are computed from `avg_per_residue_energies_{N}mer_{i}`, across all sites `i`.
 
-* `n_neighbors_site_{i}_{D}A`: for site `i`, the number of neighboring residues where at least one side-chain atom from residue `i` and at least one side-chain atom from the neighboring residue is within a distance of `D` angstroms.
-* `avg_per_res_energy_of_site_{i}_neighborhood_{D}A`, `min_per_res_energy_of_site_{i}_neighborhood_{D}A`, `max_per_res_energy_of_site_{i}_neighborhood_{D}A`: for site `i`, the average, min, or max per-residue total Rosetta energy of all neighboring residues in three-dimensional space. Neighbors are defined as described for `n_neighbors_site_{i}_{D}A`.
+**Metrics related to per-residue Rosetta energies of 3D neighborhoods:**
+* `neighborhood_site_{i}_{D}A`: for site `i`, a comma-delimited string with integers giving the number of each residue in the protein that has a side-chain/side-chain contact with site `i`. Two residues are defined as contacting if there is at least one pair of atoms between residues that are within a distance of `D` Angstroms.
+* `n_neighbors_site_{i}_{D}A`: for site `i`, the number of contacting residues in `neighborhood_site_{i}_{D}A`, including residue `i` itself.
+* `avg_per_res_energy_of_site_{i}_neighborhood_{D}A`, `min_per_res_energy_of_site_{i}_neighborhood_{D}A`, `max_per_res_energy_of_site_{i}_neighborhood_{D}A`: for site `i`, the average, min, or max per-residue total Rosetta energy of all neighboring residues in 3D space, using a distance cutoff of `D` Angstroms for defining neighbors as described above for `neighborhood_site_{i}_{D}A`.
+* `avg_energy_of_{D}A_neighborhoods`: the average, min, or max of all values of `avg_per_res_energy_of_site_{i}_neighborhood_{D}A` across all sites `i` in the protein, using a distance cutoff of `D` Angstroms.
+
+**Metrics related to counts of pairwise amino-acid contacts in 3D space**:
+* `n_{i}{j}_3d_contacts_{D}A`: the number of times amino-acid `i` contacts amino-acid `j` in the structure. Residues are defined as contacting if they are neighbors in 3D space using a distance cutoff of `D` Angstroms for defining neighbors as described above for `neighborhood_site_{i}_{D}A`.
+
+
+
+
+
 
 
 ## Ways to improve pipeline

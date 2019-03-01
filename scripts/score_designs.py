@@ -347,7 +347,7 @@ def score_pdb_file(pdb_file_name, output_dir):
     for distance_cutoff in distance_cutoffs:
         energies_df['neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
-                lambda row: scoring_utils.get_neighbors(pdb_file_name, row.name, distance_cutoff),
+                lambda row: scoring_utils.get_residue_neighbors(pdb_file_name, row.name, distance_cutoff),
                 axis=1
             )
         energies_df['n_neighbors_{0}'.format(distance_cutoff)] = \
@@ -356,11 +356,9 @@ def score_pdb_file(pdb_file_name, output_dir):
             )
         energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
-                lambda row: sum(energies_df.loc[
-                    row['neighborhood_{0}'.format(distance_cutoff)]
-                ]['energy']) / row[
-                    'n_neighbors_{0}'.format(distance_cutoff)
-                ],
+                lambda row: sum(
+                    energies_df.loc[row['neighborhood_{0}'.format(distance_cutoff)]]['energy']
+                    ) / row['n_neighbors_{0}'.format(distance_cutoff)],
                 axis=1
             )
 
@@ -370,6 +368,8 @@ def score_pdb_file(pdb_file_name, output_dir):
 
         # First, add site-specific data
         for (i, row) in energies_df.iterrows():
+            scores_df['neighborhood_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
+                ','.join(map(str, row['neighborhood_{0}'.format(distance_cutoff)]))
             scores_df['avg_per_res_energy_of_site_{0}_neighborhood_{1}A'.format(row.name, distance_cutoff)] = \
                 row['energy_of_neighborhood_{0}'.format(distance_cutoff)]
             scores_df['n_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
@@ -383,8 +383,39 @@ def score_pdb_file(pdb_file_name, output_dir):
         scores_df['max_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].max()
 
+    # Compute the number of pairswise 3D contacts for all amino-acid pairs
+    # for each distance cutoff
+    for distance_cutoff in distance_cutoffs:
 
+        # First, initiate a dictionary with keys giving each pairwise
+        # combination of amino acids, with each key being specified by two
+        # single-letter codes in alphabetical order, and with values
+        # set equal to zero
+        aa_pairwise_contacts_dict = {}
+        for (i, aa_i) in enumerate(amino_acids):
+            for (j, aa_j) in enumerate(amino_acids):
+                aa_pairwise_contacts_dict[tuple(sorted([aa_i, aa_j]))] = 0
 
+        # Then, for each target site, iterate over all neighboring sites and
+        # add each contact to the above dictionary, making sure to ignore
+        # the target site when it comes up in the list of neighboring sites
+        for (i, row) in energies_df.iterrows():
+            target_aa = pose.residue(row.name).name1()
+            neighboring_aas = [
+                pose.residue(res_n).name1() for res_n in
+                row['neighborhood_{0}'.format(distance_cutoff)]
+                if res_n != row.name
+            ]
+            for neighboring_aa in neighboring_aas:
+                aa_pairwise_contacts_dict[
+                    tuple(sorted([target_aa, neighboring_aa]))
+                ] += 1
+
+        # Add the above counts to the main dataframe that is returned at the
+        # end of this function
+        for (aa_i, aa_j) in aa_pairwise_contacts_dict.keys():
+            scores_df['n_{i}{j}_3d_contacts_{D}A'.format(aa_i, aa_j, distance_cutoff)] = \
+                aa_pairwise_contacts_dict[(aa_i, aa_j)]
 
     #------------------------------------------------------------------------
     # Remove temporary files and folders and return all data in the `scores_df`
