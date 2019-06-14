@@ -2,8 +2,11 @@
 Extra modules for scoring protein structures
 """
 
+import os
 import pandas
 import doctest
+import subprocess
+import time
 import pyrosetta
 import pyrosetta.rosetta
 from pyrosetta.rosetta.core.scoring.hbonds import HBondSet, fill_hbond_set
@@ -326,6 +329,46 @@ def get_residue_neighbors(pdb_file_name, res_n, distance_cutoff):
     # Return a list of unique residue numbers of all the
     # contacting residues
     return list(set(neighboring_residues))
+
+
+def score_design_from_command_line(
+    rosettapath, pdb, xml, nstruct, output_dir, filter_name
+):
+    """
+    Score an input PDB using an input XML, then report the results
+
+    Args:
+        *rosettapath*: the path to a `rosetta_scripts` app
+        *pdb*: the path to the input PDB
+        *xml*: the path to the input RosettaScripts XML
+        *nstruct*: the number of times to run the protocol
+        *output_dir*: the output directory where results will
+            be stored
+        *filter_name*: the filter to report
+
+    Returns:
+        The mean score of the specified filter over all runs
+    """
+
+    # Score the PDB
+    score_file = os.path.join(output_dir, 'score.sc')
+    cmd = [
+        rosettapath,
+        '-s {0}'.format(pdb),
+        '-parser:protocol {0}'.format(xml),
+        '-nstruct {0}'.format(nstruct),
+        '-out:prefix {0}'.format(output_dir),
+        '-out:file:score_only {0}'.format(score_file)
+    ]
+    subprocess.call(cmd)
+
+    # Read in the results of scoring and return the mean
+    # value over all runs
+    time.sleep(5)
+    df = pandas.read_csv(score_file, skiprows=1, sep='\s+')
+    mean_score = df[filter_name].mean()
+
+    return mean_score
 
 
 if __name__ == '__main__':

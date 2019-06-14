@@ -100,6 +100,11 @@ def score_pdb_file(pdb_file_name, output_dir):
         numpy.array(surface_bools).astype(int).astype(str)
     )
 
+    # Add values quantifying the number of residues in each layer
+    rs_scores_dict['nres_core'] = sum(core_bools)
+    rs_scores_dict['nres_boundary'] = sum(boundary_bools)
+    rs_scores_dict['nres_surface'] = sum(surface_bools)
+
     # Make sure that each residue is assigned to one and only one layer
     for (i,j,k) in zip(
         rs_scores_dict['core_bools'],
@@ -137,7 +142,8 @@ def score_pdb_file(pdb_file_name, output_dir):
         output_score_file_prefix
     )
     external_scores = pandas.DataFrame.from_dict(external_scores_dict)
-    external_scores.set_index('Unnamed: 0', inplace=True)
+    external_scores.rename(columns={'Unnamed: 0':'pdb_path'}, inplace=True)
+    external_scores.set_index('pdb_path', inplace=True)
 
     # Merge scores
     assert all(rs_scores.index.values == external_scores.index.values)
@@ -300,7 +306,9 @@ def score_pdb_file(pdb_file_name, output_dir):
                 pandas.Series(frag_qual_ss_dict[ss_type]).mean()
 
     #------------------------------------------------------------------------
-    # Compute additional metrics related to per-site Rosetta energy
+    # Compute additional metrics related to per-site Rosetta energy in local
+    # neighborhoods in primary sequence and 3D neighborhoods, as well as other
+    # metrics related to 3D structural contacts
     #------------------------------------------------------------------------
 
     # Make a dataframe with the total energy of each residue, and record
@@ -343,18 +351,27 @@ def score_pdb_file(pdb_file_name, output_dir):
         scores_df['std_energy_for_{0}mers'.format(fragment_size)] = numpy.std(fragment_energies)
 
     # For each residue in the protein, get a list of all neighboring residues
-    # where the C-beta atoms of each residue (C-alpha for Gly) are within X angstroms
+    # where the C-beta atoms of each residue (C-alpha for Gly) are within X
+    # angstroms. Then compute a variety of metrics for each neighborhood
     distance_cutoffs = [3, 5]
     for distance_cutoff in distance_cutoffs:
+
+        # Make a list of neighbors
         energies_df['neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
                 lambda row: scoring_utils.get_residue_neighbors(pdb_file_name, row.name, distance_cutoff),
                 axis=1
             )
+
+        # For each residue's neighborhood, compute the number of residues in the
+        # neighborhood, including the residue used to define the neighborhood
         energies_df['n_neighbors_{0}'.format(distance_cutoff)] = \
             energies_df['neighborhood_{0}'.format(distance_cutoff)].apply(
                 lambda x: len(x)
             )
+
+        # ... then compute the average per-residue Rosetta total energy of all
+        # residues in the neighborhood
         energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
                 lambda row: sum(
@@ -362,6 +379,15 @@ def score_pdb_file(pdb_file_name, output_dir):
                     ) / row['n_neighbors_{0}'.format(distance_cutoff)],
                 axis=1
             )
+
+        # ... then compute the average distance in primary sequence between the
+        # residue used to define the neighborhood and each of its neighbors
+        energies_df['avg_dist_in_primary_sequence_to_neighbors_{0}'.format(distance_cutoff)] = \
+            energies_df.apply(lambda row: numpy.mean([
+                abs(row.name - neighbor_n)
+                for neighbor_n in row['neighborhood_{0}'.format(distance_cutoff)]
+                if neighbor_n != row.name
+            ]), axis=1)
 
     # Add the above data into the main dataframe returned at the
     # end of this function
@@ -375,6 +401,8 @@ def score_pdb_file(pdb_file_name, output_dir):
                 row['energy_of_neighborhood_{0}'.format(distance_cutoff)]
             scores_df['n_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
                 row['n_neighbors_{0}'.format(distance_cutoff)]
+            scores_df['avg_dist_in_primary_sequence_to_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
+                row['avg_dist_in_primary_sequence_to_neighbors_{0}'.format(distance_cutoff)]
 
         # Then, add summary statistics that take all sites into account
         scores_df['avg_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
@@ -385,6 +413,7 @@ def score_pdb_file(pdb_file_name, output_dir):
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].max()
         scores_df['std_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].std()
+
     # Compute the number of pairswise 3D contacts for all amino-acid pairs
     # for each distance cutoff
     for distance_cutoff in distance_cutoffs:
@@ -418,6 +447,85 @@ def score_pdb_file(pdb_file_name, output_dir):
         for (aa_i, aa_j) in aa_pairwise_contacts_dict.keys():
             scores_df['n_{0}{1}_3d_contacts_{2}A'.format(aa_i, aa_j, distance_cutoff)] = \
                 aa_pairwise_contacts_dict[(aa_i, aa_j)]
+
+
+    #------------------------------------------------------------------------
+    # Compute metrics related to hydrophobic and polar surface area
+    #------------------------------------------------------------------------
+    scores_df['buried_over_exposed_np_AFILMVWY'] = scores_df['buried_np_AFILMVWY'] / \
+            scores_df['exposed_np_AFILMVWY']
+    scores_df['buried_minus_exposed_np_AFILMVWY'] = scores_df['buried_np_AFILMVWY'] - \
+            scores_df['exposed_np_AFILMVWY']
+
+
+    #------------------------------------------------------------------------
+    # Compute metrics related to conformational entropy
+    #------------------------------------------------------------------------
+    # Read in estimates for the loss in conformational entropy upon residue
+    # burial
+    tds_df = pandas.read_csv('scripts/sidechain_TdS_values.csv')
+    tds_df.rename(columns={'single-letter code': 'aa'}, inplace=True)
+    assert len(tds_df['aa']) == len(set(tds_df['aa']))
+    tds_groups = [
+        'Picket_Sternberg', 'Abagyan_Totrov', 'Koehl_Delarue', 'Lee'
+    ]
+
+    # Compute loss in entropy for each layer in the protein, defining layers using
+    # the side-chain-neighbors algorithm
+    for layer in ['core', 'boundary', 'surface']:
+        for tds_group in tds_groups:
+
+            # First, compute TdS over all amino acids in a layer by multiplying
+            # the TdS and frequency of each amino acid and summing these values
+            # over all amino acids
+            scores_df['{0}_TdS_{1}_per_res'.format(tds_group, layer)] = scores_df.apply(
+                lambda row: sum([
+                    float(row['{0}_freq_{1}'.format(layer, aa)]) * \
+                        float(tds_df[tds_df['aa'] == aa][tds_group])
+                    for aa in amino_acids
+                ]), axis = 1
+            )
+
+            # The above values are computed with amino-acid frequencies. Below,
+            # I multiply the above TdS value by the number of residues in a layer
+            # to get a total TdS value, NOT normalized by the number of residues
+            scores_df['{0}_TdS_{1}'.format(tds_group, layer)] = \
+                scores_df['{0}_TdS_{1}_per_res'.format(tds_group, layer)] * scores_df['nres_{0}'.format(layer)]
+
+
+    #------------------------------------------------------------------------
+    # Compute metrics using RosettaScripts command-line arguments. I will do this
+    # for filters that for some reason aren't working with PyRosetta
+    #------------------------------------------------------------------------
+    xmls_to_run_on_commandline = glob.glob(
+        os.path.join(scriptsdir, 'xmls_to_run_on_commandline/*.xml')
+    )
+    nstruct = 10
+    for xml in xmls_to_run_on_commandline:
+        filter_name = os.path.basename(xml).replace('.xml', '')
+        output_dir = os.path.join(resultsdir, filter_name) + '/'
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        scores_df[filter_name] = scoring_utils.score_design_from_command_line(
+            rosettapath,
+            pdb_file_name,
+            xml,
+            nstruct,
+            output_dir,
+            filter_name
+        )
+
+
+    #------------------------------------------------------------------------
+    # Compute per-residue values for a subset of metrics
+    #------------------------------------------------------------------------
+    per_res_metrics = [
+        'exposed_np_AFILMVWY', 'buried_minus_exposed_np_AFILMVWY',
+        'buried_over_exposed_np_AFILMVWY'
+    ]
+    for metric in per_res_metrics:
+        scores_df['{0}_per_res'.format(metric)] = scores_df[metric] / scores_df['nres']
+
 
     #------------------------------------------------------------------------
     # Remove temporary files and folders and return all data in the `scores_df`
@@ -481,6 +589,8 @@ core_selector = scoring_utils.layer_selector_mover('core')
 boundary_selector = scoring_utils.layer_selector_mover('boundary')
 surface_selector = scoring_utils.layer_selector_mover('surface')
 
+# Define path to Rosetta. TODO: make this a command-line argument
+rosettapath = '/software/rosetta/latest/bin/rosetta_scripts.hdf5.linuxgccrelease'
 
 #---------------------------------------------------------------
 # Read in command-line arguments and input PDB files
@@ -489,12 +599,13 @@ surface_selector = scoring_utils.layer_selector_mover('surface')
 parser = argparse.ArgumentParser()
 parser.add_argument("pdb_dir", help="the path to a directory with input PDB files")
 parser.add_argument("output_dir", help="the path to a directory where the output will be stored")
+
 args = parser.parse_args()
 (pdb_dir, output_dir) = (args.pdb_dir, args.output_dir)
 out_file_name = os.path.join(output_dir, 'scores.csv')
 
 # Get the input PDB files
-input_pdb_files = input_pdb_files = glob.glob(os.path.join(pdb_dir, '*.pdb'))
+input_pdb_files = glob.glob(os.path.join(pdb_dir, '*.pdb'))
 if len(input_pdb_files) == 0:
     raise ValueError("Could not find any PDB files in the directory: {0}".format(pdb_dir))
 

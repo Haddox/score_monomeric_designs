@@ -9,6 +9,7 @@ Note: There are many ways that this pipeline can be improved! Please feel free t
 ## Organization of code
 
 * `scripts/`: is a directory with a series of `Python` scripts that encode the scoring pipeline.
+  * `sidechain_TdS_values.csv`: a file with estimates for losses in side-chain entropy upon folding, taken from Table 1 of Doig et al., 1995, Protein Science.
 * `test_scoring.ipynb`: a notebook that runs the pipeline on ten structures from Rocklin et al., and then checks to see that the results from the pipeline match the results of the publication.
 * `environment.yml`: a file listing a number of dependecies that are installable via `Conda` (see below).
 
@@ -18,9 +19,33 @@ Carrying out the pipeline requires multiple external dependencies. Unfortunately
 * `PyRosetta`, as installed using `Conda` (see below).
 * a few of the custom `Python` scripts for carying out the pipeline (e.g., `scripts/make_fragments.py` and `scripts/np_aa_burial.py`) refer to other scripts and programs on the Baker lab server that have not yet been extracted.
 
+### Dependencies that are installable using `Conda`
+
 Nearly all dependencies are encoded in the file called `environment.yml`. If you're working on the Baker lab server, these dependencies can all be installed using [`Conda`](https://conda.io/docs/index.html). To do so, first clone this repository. Then, in the root directory of the repository, execute the command:
 
-    conda env create -f environment.yml
+    conda env create -f environment.yml -n {env_name}
+
+where `env_name` is whatever name you'd like to call the environment.
+
+### File with paths to external dependences that cannot be installed with `Conda`
+
+Dependencies in `np_aa_burial.py`:
+
+/software/rosetta/versions/v2019.01-dev60566/bin/rosetta_scripts.hdf5.linuxgccrelease
+
+Dependencies in `make_fragments.py`:
+
+fragment_tools = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/tools/fragment_tools/'
+psipred = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/psipred3.21/'
+scripts_dir = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/bakerlab_scripts/boinc/'
+nnmake = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/nnmake/pNNMAKE.gnu'
+csbuild = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/csbuild/'
+cm_scripts = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/cm_scripts/bin/'
+rosetta = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/main/source/bin/'
+
+core_clusters, buried_np.xml
+
+
 
 ## How to run the pipeline
 
@@ -93,10 +118,11 @@ Most metrics are described in the supplemental material of [Rocklin, 2017, Scien
 **Metrics related to counts of pairwise amino-acid contacts in 3D space**:
 * `n_{i}{j}_3d_contacts_{D}A`: the number of times amino-acid `i` contacts amino-acid `j` in the structure. Residues are defined as contacting if they are neighbors in 3D space using a distance cutoff of `D` Angstroms for defining neighbors as described above for `neighborhood_site_{i}_{D}A`.
 
+**Metrics related to buried hydrophobic surface area**:
+* `buried_over_exposed_np_AFILMVWY`: `buried_np_AFILMVWY` / `exposed_np_AFILMVWY`
 
-
-
-
+**Metrics related to side-chain entropy**:
+* `{i}_TdS_{j}`: the change in side-chain entropy using TdS values from Table 1 of Doig et al., 1995, Protein Science, where `i` refers to the set of values from Table 1 (there are multiple estimates from different groups) and `j` is the layer in the protein (core, boundary, or surface) as defined using the side-chain-neighbor algorithm.
 
 
 ## Ways to improve pipeline

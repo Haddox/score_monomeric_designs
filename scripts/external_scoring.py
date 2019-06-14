@@ -102,8 +102,7 @@ def generate_enhanced_score_summary_table(
         scriptsdir = scriptsdir[:-1]
     subprocess.check_call(
         ['python', '{0}/make_fragments.py'.format(path.relpath(scriptsdir, fragment_resultsdir)), '-pdbs'] + list(map(path.abspath, input_pdb_list)),
-        stderr=subprocess.PIPE,
-        cwd=fragment_resultsdir,
+        stderr=subprocess.PIPE, cwd=fragment_resultsdir
     )
 
     # Concatenate the `frag_qual.summary` files for each input pose into a single
