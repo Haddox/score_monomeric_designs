@@ -109,11 +109,13 @@ Most metrics are described in the supplemental material of [Rocklin, 2017, Scien
 * `avg_per_residue_energies_{N}mer_{i}`: for a given fragment of size `N` starting at site `i` in the protein, the average per-residue total Rosetta energies of all sites in the fragment. Currently, this metric is computed for Ns of: 2, 3, 4, or 5.
 * `avg_energy_for_{N}mers`, `min_energy_for_{N}mers`, `max_energy_for_{N}mers`: the average, minimum, and maximum value of all Nmers of a given size `N`. These values are computed from `avg_per_residue_energies_{N}mer_{i}`, across all sites `i`.
 
-**Metrics related to per-residue Rosetta energies of 3D neighborhoods:**
+**Metrics related to per-residue energies of 3D neighborhoods:**
 * `neighborhood_site_{i}_{D}A`: for site `i`, a comma-delimited string with integers giving the number of each residue in the protein that has a side-chain/side-chain contact with site `i`. Two residues are defined as contacting if there is at least one pair of atoms between residues that are within a distance of `D` Angstroms.
 * `n_neighbors_site_{i}_{D}A`: for site `i`, the number of contacting residues in `neighborhood_site_{i}_{D}A`, including residue `i` itself.
 * `avg_per_res_energy_of_site_{i}_neighborhood_{D}A`, `min_per_res_energy_of_site_{i}_neighborhood_{D}A`, `max_per_res_energy_of_site_{i}_neighborhood_{D}A`: for site `i`, the average, min, or max per-residue total Rosetta energy of all neighboring residues in 3D space, using a distance cutoff of `D` Angstroms for defining neighbors as described above for `neighborhood_site_{i}_{D}A`.
-* `avg_energy_of_{D}A_neighborhoods`: the average, min, or max of all values of `avg_per_res_energy_of_site_{i}_neighborhood_{D}A` across all sites `i` in the protein, using a distance cutoff of `D` Angstroms.
+* `*_energy_of_{D}A_neighborhoods`: the average, min, or max of all values of `avg_per_res_energy_of_site_{i}_neighborhood_{D}A` across all sites `i` in the protein, using a distance cutoff of `D` Angstroms.
+* `*_charge_of_{D}A_neighborhoods`: the average, min, or max charge of all neighborhoods across all sites `i` in the protein, using a distance cutoff of `D` Angstroms.
+
 
 **Metrics related to counts of pairwise amino-acid contacts in 3D space**:
 * `n_{i}{j}_3d_contacts_{D}A`: the number of times amino-acid `i` contacts amino-acid `j` in the structure. Residues are defined as contacting if they are neighbors in 3D space using a distance cutoff of `D` Angstroms for defining neighbors as described above for `neighborhood_site_{i}_{D}A`.
@@ -124,13 +126,39 @@ Most metrics are described in the supplemental material of [Rocklin, 2017, Scien
 **Metrics related to side-chain entropy**:
 * `{i}_TdS_{j}`: the change in side-chain entropy using TdS values from Table 1 of Doig et al., 1995, Protein Science, where `i` refers to the set of values from Table 1 (there are multiple estimates from different groups) and `j` is the layer in the protein (core, boundary, or surface) as defined using the side-chain-neighbor algorithm.
 
+**Metrics related to packing and cavities**
+* pack: measures packing density using the PackStat filter
+* cavity_volume: uses the PackStat filter to estimate the total volume of voids in a structure
+* holes: void volume computed using Holes filter
+* `ProteinVolume_total_vol`: the total volume of the protein, including both the void volume and the van der Waals volume (see below) as computed using the `ProteinVolume` program (Chen CR, Makhatadze GI (2015) ProteinVolume: calculating molecular van der Waals and void volumes in proteins. BMC Bioinformatics 16:1–6.)
+* `ProteinVolume_void_vol`: the void volume of the protein, computed using the `ProteinVolume` program
+* `ProteinVolume_vdw_vol`: the van der Waals volume of the protein, computed using the `ProteinVolume` program.
+* `ProteinVolume_packing_density`: the packing density of the protein (van der Waals volume / total volume), computed using the `ProteinVolume` program
 
-## Ways to improve pipeline
+**Metrics related to ABEGO types**
+* `abego_counts_in_loops_*`: counts of 1-, 2-, and 3-mer ABEGO strings in loops for all possible strings
 
-See the issues section of the repo. Feel free to raise an issue yourself!
 
-## Missing filters:
-* `cavity_volume`
-    * Currently gives rise to the error:
-        Error: Element 'CavityVolume': This element is not expected. Expected is one of ( AASynthesisFitnessCost, AlaScan, AlignmentAAFinder, AlignmentGapInserter, AngleToVector, AtomCount, AtomicContact, AtomicContactCount, AtomicDistance, AverageDegree ).
-    * Parisa said that this may not yet be part of master
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+***

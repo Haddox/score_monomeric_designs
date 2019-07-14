@@ -166,8 +166,8 @@ if os.path.isfile('%s.frag_quals' % sys.argv[1]):
     score_dict['worst6frags'] = score_dict['sequence'].map(lambda x: float(seq_to_frag_line[x].split()[-4]))
     score_dict['sum_best_frags'] = score_dict['sequence'].map(lambda x: float(seq_to_frag_line[x].split()[-2]))
     score_dict['avg_all_frags'] = score_dict['sequence'].map(lambda x: float(seq_to_frag_line[x].split()[-1]))
-    n_frags = score_dict['n_res'] - 8
-    score_dict['avg_best_frag'] = score_dict['sum_best_frags'] / n_frags
+    n_frags = float(score_dict['n_res']) - 8
+    score_dict['avg_best_frag'] = float(score_dict['sum_best_frags']) / n_frags
 else:
     print >> sys.stderr, '%s.frag_quals not found, skipping fragment quality' % sys.argv[1], sys.stderr
 
@@ -314,7 +314,7 @@ else:
     print >> sys.stderr, 'Loading burial analysis from %s.burial_analysis...' % sys.argv[1], sys.stderr
 burial_df = pd.read_csv('%s.burial_analysis' % sys.argv[1],delim_whitespace=True)
 score_dict = pd.merge(left=score_dict, right=burial_df[['sequence','buried_np_AFILMVWY','exposed_np_AFILMVWY']], on='sequence',how='left')
-score_dict['buried_np_AFILMVWY_per_res'] = score_dict.buried_np_AFILMVWY / score_dict.n_res
+score_dict['buried_np_AFILMVWY_per_res'] = float(score_dict.buried_np_AFILMVWY) / float(score_dict.n_res)
 
 
 #residue scores vs means analysis
@@ -459,17 +459,18 @@ score_dict['contig_not_hp_avg_norm'] = score_dict['sequence'].map(seq_to_contig_
 
 
 
-score_dict['score_per_res'] = score_dict.total_score / score_dict.n_res
-score_dict['fa_atr_per_res'] = score_dict.fa_atr / score_dict.n_res
-score_dict['fa_rep_per_res'] = score_dict.fa_rep / score_dict.n_res
-score_dict['net_atr_per_res'] = (score_dict.fa_atr + score_dict.fa_rep) / score_dict.n_res
-score_dict['net_sol_per_res'] = (score_dict.fa_sol + score_dict.fa_elec) / score_dict.n_res
-score_dict['net_atr_net_sol_per_res'] = (score_dict.net_atr_per_res + score_dict.net_sol_per_res)
+assert len(score_dict.index.values) == 1, len(score_dict.index.values)
+score_dict['score_per_res'] = float(score_dict.total_score) / float(score_dict.n_res)
+score_dict['fa_atr_per_res'] = float(score_dict.fa_atr) / float(score_dict.n_res)
+score_dict['fa_rep_per_res'] = float(score_dict.fa_rep) / float(score_dict.n_res)
+score_dict['net_atr_per_res'] = (float(score_dict.fa_atr) + float(score_dict.fa_rep)) / float(score_dict.n_res)
+score_dict['net_sol_per_res'] = (float(score_dict.fa_sol) + float(score_dict.fa_elec)) / float(score_dict.n_res)
+score_dict['net_atr_net_sol_per_res'] = (float(score_dict.net_atr_per_res) + float(score_dict.net_sol_per_res))
 
 
-if 'buried_np' in score_dict: score_dict['buried_np_per_res'] = score_dict.buried_np / score_dict.n_res
-if 'exposed_np' in score_dict: score_dict['exposed_np_per_res'] = score_dict.exposed_hydrophobics / score_dict.n_res
-if 'buried_np' in score_dict and 'exposed_np' in score_dict: score_dict['buried_minus_exposed_per_res'] = (score_dict.buried_np - score_dict.exposed_hydrophobics) / score_dict.n_res
+if 'buried_np' in score_dict: score_dict['buried_np_per_res'] = float(score_dict.buried_np) / float(score_dict.n_res)
+if 'exposed_np' in score_dict: score_dict['exposed_np_per_res'] = float(score_dict.exposed_hydrophobics) / float(score_dict.n_res)
+if 'buried_np' in score_dict and 'exposed_np' in score_dict: score_dict['buried_minus_exposed_per_res'] = (float(score_dict.buried_np) - float(score_dict.exposed_hydrophobics)) / float(score_dict.n_res)
 #score_dict['exposed_polar_per_res'] = score_dict.exposed_polars / score_dict.n_res
 #score_dict['sa_per_res'] = (score_dict.exposed_hydrophobics + score_dict.exposed_polars) / score_dict.n_res
 

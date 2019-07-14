@@ -6,6 +6,7 @@ import os
 import pandas
 import doctest
 import subprocess
+import itertools
 import time
 import pyrosetta
 import pyrosetta.rosetta
@@ -25,6 +26,18 @@ def __iter__(self):
 def hbonds(self):
     return [hb for hb in self]
 
+# Set up a score function in `PyRosetta`
+pyrosetta.init('-beta_nov16 -corrections:beta_nov16 -mute all -mute core -mute protocols')
+sf = pyrosetta.get_fa_scorefxn()
+def fix_scorefxn(sfxn, allow_double_bb=False):
+    opts = sfxn.energy_method_options()
+    opts.hbond_options().decompose_bb_hb_into_pair_energies(True)
+    opts.hbond_options().bb_donor_acceptor_check(not allow_double_bb)
+    sfxn.set_energy_method_options(opts)
+fix_scorefxn(sf)
+
+
+# Define modules
 def ComputeAminoAcidFrequencyInResidueSubset(aa_seq, per_residue_ids, aa, subset_id, return_counts=False):
     """
     Compute the frequency of a given amino acid among a subset of residues with a common ID
@@ -369,6 +382,237 @@ def score_design_from_command_line(
     mean_score = df[filter_name].mean()
 
     return mean_score
+
+
+def compute_protein_volume_metrics(pdb, vol_dir, path_to_ProteinVolume):
+    """
+    Use `ProteinVolume` to compute metrics on protein volume
+
+    citation: Chen CR, Makhatadze GI (2015) ProteinVolume: calculating
+    molecular van der Waals and void volumes in proteins. BMC
+    Bioinformatics 16:1–6.
+
+    Args:
+        *pdb*: the path to a PDB file to analyze
+        *vol_dir*: the path to a directory in which to store output
+            from the program
+        *path_to_ProteinVolume*: the path `ProteinVolume` script
+    Returns:
+        A tupple with the following elements in the following order:
+            total_vol: the total volume of the protein
+            void_vol: the total volume of voids
+            vdw_vol: the total van der Waals volume
+            packing_density: the packing density
+    """
+
+    # Make new directory for computing metrics on protein volume
+    if not os.path.isdir(vol_dir):
+        os.makedirs(vol_dir)
+
+    # Copy PDB file to new directory
+    new_pdb = os.path.join(
+        vol_dir,
+        os.path.basename(pdb)
+    )
+    subprocess.check_call(['cp', pdb, new_pdb])
+
+    # Run command on new PDB file
+    cmd = ' '.join([
+        'java',
+        '-jar',
+        path_to_ProteinVolume,
+        '"{0}"'.format(new_pdb)
+    ])
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+    out, err = process.communicate()
+
+    # Read in results from the output
+    out = out.decode('ascii')
+    found_second_to_last_line = False
+    for line in out.split('\n'):
+        elements = line.split()
+        if len(elements) == 0:
+            continue
+        if elements[0] == 'Protein':
+            found_second_to_last_line = True
+            continue
+        if found_second_to_last_line:
+            total_vol = elements[1]
+            void_vol = elements[2]
+            vdw_vol = elements[3]
+            packing_density = elements[4]
+
+    return(total_vol, void_vol, vdw_vol, packing_density)
+
+
+def compute_abego_counts_in_loops(abego_string, dssp_string):
+    """
+    Compute counts for ABEGO 1-, 2-, and 3-mers in loops
+    
+    Args:
+        *abego_string*: a string of the per-residue ABEGO types
+            for each residue in the protein (upper case)
+        *dssp_string*: a string of per-residue secondary structure
+            for each residue in the protein (upper case; H=helix,
+            E=strand, L=loop)
+            
+    Returns:
+        A dictionary with all possible ABEGO 1-, 2-, and 3-mer
+            sequences as keys and counts of these sequences in
+            loops as values
+            
+    Code for doctest:
+    >>> abego_string = 'AGA'
+    >>> dssp_string = 'ELL'
+    >>> d = compute_abego_counts_in_loops(abego_string, dssp_string)
+    >>> (d['G'], d['A'], d['GA'])
+    (1, 1, 1)
+    >>> sum(d.values())
+    3
+    >>> abego_string = 'BAGBBEBBB'
+    >>> dssp_string =  'LELLLHLLH'
+    >>> d = compute_abego_counts_in_loops(abego_string, dssp_string)
+    >>> (d['A'], d['B'], d['G'], d['GB'], d['BB'], d['GBB'])
+    (0, 5, 1, 1, 2, 1)
+    >>> sum(d.values())
+    10
+    """
+
+    # Initiate a dictionary with all possible 1mer, 2mer, and 3mer ABEGO
+    # sequences
+    abego_1mers = list('ABEGO')
+    abego_2mers = [
+        ''.join(abego_2mer) for abego_2mer in
+        list(itertools.product(abego_1mers, abego_1mers, repeat=1))
+    ]
+    abego_3mers = [
+        ''.join(abego_3mer) for abego_3mer in
+        list(itertools.product(abego_1mers, abego_2mers, repeat=1))
+    ]
+    abego_counts = {
+        ''.join(list(abego_type)) : 0
+        for abego_type in abego_1mers + abego_2mers + abego_3mers
+    }
+
+    # Go through sequence and record counts of 1mer, 2mer, and 3mer
+    # ABEGOs
+    abego_string = abego_string.upper()
+    dssp_string = dssp_string.upper()
+    assert len(abego_string) == len(dssp_string)
+    for i in range(len(abego_string)):
+
+        # Record data for 1mers if this position is in a loop
+        if dssp_string[i] == 'L':
+            abego_type_1mer = abego_string[i]
+            abego_counts[abego_type_1mer] += 1
+        else:
+            continue
+
+        # Record data for 2mers if the next position is in a loop
+        if (i+1 >= len(abego_string)):
+            continue
+        if dssp_string[i+1] == 'L':
+            abego_type_2mer = abego_string[i:i+2]
+            abego_counts[abego_type_2mer] += 1
+        else:
+            continue
+
+        # Record data for 3mers if the position after next is in a loop
+        if (i+2 >= len(abego_string)):
+            continue
+        if dssp_string[i+2] == 'L':
+            abego_type_3mer = abego_string[i:i+3]
+            abego_counts[abego_type_3mer] += 1
+    return abego_counts
+
+
+def compute_total_charge_of_seq_subset(sequence, list_of_sites_ns):
+    """
+    Compute the total charge of a subset of an amino-acid sequence
+    
+    Args:
+        *sequence*: amino-acid sequence (string)
+        *list_of_site_ns*: list of site numbers (integers) that defines
+            the subset of the sequence to analyze, indexed starting at 1
+    Returns:
+        The total charge of the sites listed (float)
+        
+    Code for doctest:
+    >>> sequence = 'HAERKKD'
+    >>> list_of_sites_ns = [1]
+    >>> compute_total_charge_of_seq_subset(sequence, list_of_sites_ns)
+    0.5
+    >>> list_of_sites_ns = [1, 2, 3, 4, 5, 6, 7]
+    >>> compute_total_charge_of_seq_subset(sequence, list_of_sites_ns)
+    1.5
+    """
+    
+    # Define amino-acid charges
+    amino_acid_charges = {
+        'E' : -1,
+        'D' : -1,
+        'R' : 1,
+        'K' : 1,
+        'H' : 0.5
+    }
+    
+    # Compute the total charge of the indicated subset of sites
+    # and return the result
+    sequence = sequence.upper()
+    total_charge = 0
+    for site in list_of_sites_ns:
+        aa = sequence[site-1]
+        if aa in amino_acid_charges.keys():
+            total_charge += amino_acid_charges[aa]
+    return total_charge
+
+
+def compute_per_residue_energies(pdb):
+    """
+    Compute per-residue energies for each term in the score function
+
+    Args:
+        *pdb*: the path to an input PDB file
+
+    Returns:
+        A dataframe with columns giving energies and rows giving
+            residues
+    """
+
+    # Make a list of all score terms in the energy function
+    score_terms = [
+        str(score_term).replace('ScoreType.', '')
+        for score_term in list(sf.get_nonzero_weighted_scoretypes())
+    ]
+
+    # Initiate a dictionary to store per-residue scores
+    scores_dict = {
+        key : []
+        for key in ['res_n', 'res_aa', 'total_score'] + score_terms
+    }
+
+    # Read in and score pose
+    pose = pyrosetta.pose_from_pdb(pdb)
+    sf(pose)
+
+    # Make a dataframe with per-residue scores for each energy term
+    # and the total score
+    for res_n in list(range(1, pose.size()+1)):
+        scores_dict['res_n'].append(res_n)
+        scores_dict['res_aa'].append(pose.residue(res_n).name1())
+        scores_dict['total_score'].append(
+            pose.energies().residue_total_energy(res_n)
+        )
+        for score_term in score_terms:
+            scores_dict[score_term].append(
+                pose.energies().residue_total_energies(res_n)[
+                    pyrosetta.rosetta.core.scoring.score_type_from_name(
+                        score_term
+                    )
+                ]
+            )
+    scores_df = pandas.DataFrame(scores_dict)
+    return scores_df
 
 
 if __name__ == '__main__':

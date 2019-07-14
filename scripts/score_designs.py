@@ -15,6 +15,7 @@ import math
 import jug
 import subprocess
 from Bio.Alphabet import IUPAC
+import itertools
 
 # Import custom scripts
 scriptsdir = os.path.dirname(__file__)
@@ -345,21 +346,27 @@ def score_pdb_file(pdb_file_name, output_dir):
             scores_df['avg_per_residue_energies_{0}mer_{1}'.format(
                 fragment_size, res_n
             )] = avg_per_residue_energy_fragment_i
-        scores_df['avg_energy_for_{0}mers'.format(fragment_size)] = numpy.mean(fragment_energies)
-        scores_df['min_energy_for_{0}mers'.format(fragment_size)] = numpy.min(fragment_energies)
-        scores_df['max_energy_for_{0}mers'.format(fragment_size)] = numpy.max(fragment_energies)
-        scores_df['std_energy_for_{0}mers'.format(fragment_size)] = numpy.std(fragment_energies)
+        scores_df['avg_energy_for_{0}mers'.format(fragment_size)] = \
+            numpy.mean(fragment_energies)
+        scores_df['min_energy_for_{0}mers'.format(fragment_size)] = \
+            numpy.min(fragment_energies)
+        scores_df['max_energy_for_{0}mers'.format(fragment_size)] = \
+            numpy.max(fragment_energies)
+        scores_df['std_energy_for_{0}mers'.format(fragment_size)] = \
+            numpy.std(fragment_energies)
 
     # For each residue in the protein, get a list of all neighboring residues
-    # where the C-beta atoms of each residue (C-alpha for Gly) are within X
-    # angstroms. Then compute a variety of metrics for each neighborhood
+    # where both residues have at least one side-chain atom below the specified
+    # distance cutoff
     distance_cutoffs = [3, 5]
     for distance_cutoff in distance_cutoffs:
 
         # Make a list of neighbors
         energies_df['neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
-                lambda row: scoring_utils.get_residue_neighbors(pdb_file_name, row.name, distance_cutoff),
+                lambda row: scoring_utils.get_residue_neighbors(
+                    pdb_file_name, row.name, distance_cutoff
+                ),
                 axis=1
             )
 
@@ -375,14 +382,27 @@ def score_pdb_file(pdb_file_name, output_dir):
         energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
                 lambda row: sum(
-                    energies_df.loc[row['neighborhood_{0}'.format(distance_cutoff)]]['energy']
-                    ) / row['n_neighbors_{0}'.format(distance_cutoff)],
+                    energies_df.loc[
+                        row['neighborhood_{0}'.format(distance_cutoff)]
+                    ]['energy']) / row['n_neighbors_{0}'.format(distance_cutoff)],
                 axis=1
             )
 
+        # ... then compute the total charge of all residues in the
+        # neighborhood
+        energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)] = \
+            energies_df.apply(
+                lambda row: compute_total_charge_of_seq_subset(
+                    row['sequence'],
+                    row['neighborhood_{0}'.format(distance_cutoff)]
+                )
+            )
+        
         # ... then compute the average distance in primary sequence between the
         # residue used to define the neighborhood and each of its neighbors
-        energies_df['avg_dist_in_primary_sequence_to_neighbors_{0}'.format(distance_cutoff)] = \
+        energies_df[
+            'avg_dist_in_primary_sequence_to_neighbors_{0}'.format(distance_cutoff)
+        ] = \
             energies_df.apply(lambda row: numpy.mean([
                 abs(row.name - neighbor_n)
                 for neighbor_n in row['neighborhood_{0}'.format(distance_cutoff)]
@@ -395,14 +415,30 @@ def score_pdb_file(pdb_file_name, output_dir):
 
         # First, add site-specific data
         for (i, row) in energies_df.iterrows():
-            scores_df['neighborhood_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
+            scores_df[
+                'neighborhood_site_{0}_{1}A'.format(row.name, distance_cutoff)
+            ] = \
                 ','.join(map(str, row['neighborhood_{0}'.format(distance_cutoff)]))
-            scores_df['avg_per_res_energy_of_site_{0}_neighborhood_{1}A'.format(row.name, distance_cutoff)] = \
+            scores_df[
+                'avg_per_res_energy_of_site_{0}_neighborhood_{1}A'.format(
+                    row.name, distance_cutoff
+                )
+            ] = \
                 row['energy_of_neighborhood_{0}'.format(distance_cutoff)]
-            scores_df['n_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
+            scores_df[
+                'n_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)
+            ] = \
                 row['n_neighbors_{0}'.format(distance_cutoff)]
-            scores_df['avg_dist_in_primary_sequence_to_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)] = \
-                row['avg_dist_in_primary_sequence_to_neighbors_{0}'.format(distance_cutoff)]
+            scores_df[
+                'avg_dist_in_primary_sequence_to_neighbors_site_{0}_{1}A'.format(
+                    row.name, distance_cutoff
+                )
+            ] = \
+                row[
+                'avg_dist_in_primary_sequence_to_neighbors_{0}'.format(
+                    distance_cutoff
+                    )
+                ]
 
         # Then, add summary statistics that take all sites into account
         scores_df['avg_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
@@ -413,7 +449,17 @@ def score_pdb_file(pdb_file_name, output_dir):
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].max()
         scores_df['std_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].std()
+        
+        scores_df['mean_charge_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)].mean()
+        scores_df['min_charge_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)].min()
+        scores_df['max_charge_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)].max()
+        scores_df['std_charge_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
+            energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)].std()
 
+        
     # Compute the number of pairswise 3D contacts for all amino-acid pairs
     # for each distance cutoff
     for distance_cutoff in distance_cutoffs:
@@ -445,16 +491,19 @@ def score_pdb_file(pdb_file_name, output_dir):
         # Add the above counts to the main dataframe that is returned at the
         # end of this function
         for (aa_i, aa_j) in aa_pairwise_contacts_dict.keys():
-            scores_df['n_{0}{1}_3d_contacts_{2}A'.format(aa_i, aa_j, distance_cutoff)] = \
-                aa_pairwise_contacts_dict[(aa_i, aa_j)]
+            scores_df['n_{0}{1}_3d_contacts_{2}A'.format(
+                aa_i, aa_j, distance_cutoff
+            )] = aa_pairwise_contacts_dict[(aa_i, aa_j)]
 
 
     #------------------------------------------------------------------------
     # Compute metrics related to hydrophobic and polar surface area
     #------------------------------------------------------------------------
-    scores_df['buried_over_exposed_np_AFILMVWY'] = scores_df['buried_np_AFILMVWY'] / \
+    scores_df['buried_over_exposed_np_AFILMVWY'] = \
+        scores_df['buried_np_AFILMVWY'] / \
             scores_df['exposed_np_AFILMVWY']
-    scores_df['buried_minus_exposed_np_AFILMVWY'] = scores_df['buried_np_AFILMVWY'] - \
+    scores_df['buried_minus_exposed_np_AFILMVWY'] = \
+        scores_df['buried_np_AFILMVWY'] - \
             scores_df['exposed_np_AFILMVWY']
 
 
@@ -478,19 +527,21 @@ def score_pdb_file(pdb_file_name, output_dir):
             # First, compute TdS over all amino acids in a layer by multiplying
             # the TdS and frequency of each amino acid and summing these values
             # over all amino acids
-            scores_df['{0}_TdS_{1}_per_res'.format(tds_group, layer)] = scores_df.apply(
-                lambda row: sum([
-                    float(row['{0}_freq_{1}'.format(layer, aa)]) * \
-                        float(tds_df[tds_df['aa'] == aa][tds_group])
-                    for aa in amino_acids
-                ]), axis = 1
-            )
+            scores_df['{0}_TdS_{1}_per_res'.format(tds_group, layer)] = \
+                scores_df.apply(
+                    lambda row: sum([
+                        float(row['{0}_freq_{1}'.format(layer, aa)]) * \
+                            float(tds_df[tds_df['aa'] == aa][tds_group])
+                        for aa in amino_acids
+                    ]), axis = 1
+                )
 
             # The above values are computed with amino-acid frequencies. Below,
             # I multiply the above TdS value by the number of residues in a layer
             # to get a total TdS value, NOT normalized by the number of residues
             scores_df['{0}_TdS_{1}'.format(tds_group, layer)] = \
-                scores_df['{0}_TdS_{1}_per_res'.format(tds_group, layer)] * scores_df['nres_{0}'.format(layer)]
+                scores_df['{0}_TdS_{1}_per_res'.format(tds_group, layer)] * \
+                    scores_df['nres_{0}'.format(layer)]
 
 
     #------------------------------------------------------------------------
@@ -515,6 +566,41 @@ def score_pdb_file(pdb_file_name, output_dir):
             filter_name
         )
 
+    #------------------------------------------------------------------------
+    # Add metrics on ABEGO types
+    #------------------------------------------------------------------------
+    # First, add a column that gives the per-residue ABEGO type of all sites
+    abego_f = os.path.join(resultsdir, 'score.csv.abego_terms')
+    with open(abego_f) as f:
+        lines = f.readlines()
+        assert len(lines) == 1, abego_f
+        entries = lines[0].strip().split()
+        assert len(entries) == 5, abego_f
+        scores_df['abego_types'] = entries[2].upper()
+
+    # Then, add counts of ABEGO-type strings for all 1-mer, 2-mer, and 3-mers
+    # within loops
+    abego_string = scores_df.iloc[0]['abego_types'].upper()
+    dssp_string = scores_df.iloc[0]['dssp'].upper()
+    abego_counts_dict = scoring_utils.compute_abego_counts_in_loops(
+        abego_string, dssp_string
+    )
+    for (abego_string, counts) in abego_counts_dict.items():
+        scores_df['abego_counts_in_loops_{0}'.format(abego_string)] = counts
+
+    #------------------------------------------------------------------------
+    # Add metrics on protein volume
+    #------------------------------------------------------------------------
+    vol_dir = os.path.join(resultsdir, 'protein_vol/')
+    path_to_ProteinVolume = 'scripts/ProteinVolume_1.3/ProteinVolume_1.3.jar'
+    vol_output = scoring_utils.compute_protein_volume_metrics(
+        pdb_file_name, vol_dir, path_to_ProteinVolume
+    )
+    assert len(vol_output) == 4, len(vol_output)
+    scores_df['ProteinVolume_total_vol'] = vol_output[0]
+    scores_df['ProteinVolume_void_vol'] = vol_output[1]
+    scores_df['ProteinVolume_vdw_vol'] = vol_output[2]
+    scores_df['ProteinVolume_packing_density'] = vol_output[3]
 
     #------------------------------------------------------------------------
     # Compute per-residue values for a subset of metrics
