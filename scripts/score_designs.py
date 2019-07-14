@@ -162,11 +162,14 @@ def score_pdb_file(pdb_file_name, output_dir):
     # different parts of the structure
     #------------------------------------------------------------------------
 
-    # Sum the `rama_prepro` and `p_aa_pp` terms and make columns that indicate whether
-    # structures have helices and/or strands.
-    scores_df['rama_prepro_and_p_aa_pp'] = scores_df['rama_prepro'] + scores_df['p_aa_pp']
-    scores_df['has_helices'] = scores_df['secondary_structure'].apply(lambda x: 'H' in x)
-    scores_df['has_strands'] = scores_df['secondary_structure'].apply(lambda x: 'E' in x)
+    # Sum the `rama_prepro` and `p_aa_pp` terms and make columns that indicate
+    # whether structures have helices and/or strands.
+    scores_df['rama_prepro_and_p_aa_pp'] = \
+        scores_df['rama_prepro'] + scores_df['p_aa_pp']
+    scores_df['has_helices'] = \
+        scores_df['secondary_structure'].apply(lambda x: 'H' in x)
+    scores_df['has_strands'] = \
+        scores_df['secondary_structure'].apply(lambda x: 'E' in x)
 
     # Compute the frequency of each amino acid across the entire protein, in
     # alpha helices, in beta strands, or in different layers.
@@ -176,7 +179,8 @@ def score_pdb_file(pdb_file_name, output_dir):
     for aa in amino_acids:
 
         # compute amino-acid frequencies across the entire protein
-        scores_df['freq_{0}'.format(aa)] = scores_df['sequence'].apply(lambda x: x.count(aa)/len(x))
+        scores_df['freq_{0}'.format(aa)] = \
+            scores_df['sequence'].apply(lambda x: x.count(aa)/len(x))
 
         # ... only in alpha helices or beta strands
         for (ss, ss_id) in [('helices', 'H'), ('strands', 'E')]:
@@ -215,13 +219,18 @@ def score_pdb_file(pdb_file_name, output_dir):
     # Compute joint frequency of hydrophobic amino acids defined by the list below
     hydrophobic_amino_acids = list('AFILMVWY')
     scores_df['percent_hydrophobic_AFILMVWY'] = scores_df.apply(
-        lambda row: 100.0 * sum([row['freq_{0}'.format(aa)] for aa in hydrophobic_amino_acids]),
+        lambda row: 100.0 * sum(
+            [row['freq_{0}'.format(aa)] for aa in hydrophobic_amino_acids]
+        ),
         axis=1
     )
     for layer in layers:
-        scores_df['percent_hydrophobic_AFILMVWY_{0}'.format(layer)] = scores_df.apply(
-            lambda row: 100.0 * sum([row['{0}_freq_{1}'.format(layer, aa)] for aa in hydrophobic_amino_acids]),
-            axis=1
+        scores_df['percent_hydrophobic_AFILMVWY_{0}'.format(layer)] = \
+            scores_df.apply(
+                lambda row: 100.0 * sum([
+                    row['{0}_freq_{1}'.format(layer, aa)]
+                    for aa in hydrophobic_amino_acids
+                ]), axis=1
         )
 
     #------------------------------------------------------------------------
@@ -316,44 +325,56 @@ def score_pdb_file(pdb_file_name, output_dir):
     # each residue's energy in the main dataframe returned at the end of this
     # function
     nres = pose.total_residue()
-    energies_dict = {
-        key : []
-        for key in ['residue', 'energy']
-    }
-    for res_n in range(1, nres+1):
-        energies_dict['residue'].append(res_n)
-        energy_n = pose.energies().residue_total_energy(res_n)
-        energies_dict['energy'].append(energy_n)
-        scores_df['energy_per_residue_site_{0}'.format(res_n)] = energy_n
-    energies_df = pandas.DataFrame.from_dict(energies_dict)
-    energies_df.sort_values('residue', inplace=True, ascending=True)
-    energies_df.set_index('residue', inplace=True)
+    energies_df = scoring_utils.compute_per_residue_energies(pdb)
+    energies_df.sort_values('res_n', inplace=True, ascending=True)
+    energies_df.set_index('res_n', inplace=True)
+    for (i, row) in energies_df.iterrows():
+        scores_df['energy_per_residue_site_{0}'.format(i)] = row['energy']
 
     # Make sure the per-residue energies add up to approximately
     # the total energy
     assert (sum(energies_df['energy']) - scorefxn(pose)) < 1e-3
+        
+    # For each score term, compute summary statistics on per-residue
+    # energies, including the total energy, as well as individual score
+    # terms.
+    for energy_col in energies_df.columns.values:
+        if energy_col in ['res_aa']:
+            continue        
+        
+        # First, compute the min, max, mean, and standard deviation of
+        # each term. Also compute the mean of the 5 worst or best scores.
+        sorted_vals = energies_df[energy_col].sort_values(ascending=True)
+        scores_df['min_per_site_{0}'.format(energy_col)] = sorted_vals.min()
+        scores_df['max_per_site_{0}'.format(energy_col)] = sorted_vals.max()
+        scores_df['mean_per_site_{0}'.format(energy_col)] = sorted_vals.mean()
+        scores_df['std_per_site_{0}'.format(energy_col)] = sorted_vals.std()
+        scores_df['avg_lowest_per_site_{0}'.format(energy_col)] = \
+            sorted_vals[:5].mean()
+        scores_df['avg_highest_per_site_{0}'.format(energy_col)] = \
+            sorted_vals[-5:].mean()
 
-    # Compute the energy of all n-mers in the structure and then
-    # compute summary statistics from that list
-    fragment_sizes = [2, 3, 4, 5]
-    for fragment_size in fragment_sizes:
-        fragment_energies = []
-        for res_n in range(1, nres-fragment_size+2):
-            fragment_n = [res_n + i for i in range(fragment_size)]
-            avg_per_residue_energy_fragment_i = \
-                sum(energies_df.loc[fragment_n]['energy']) / fragment_size
-            fragment_energies.append(avg_per_residue_energy_fragment_i)
-            scores_df['avg_per_residue_energies_{0}mer_{1}'.format(
-                fragment_size, res_n
-            )] = avg_per_residue_energy_fragment_i
-        scores_df['avg_energy_for_{0}mers'.format(fragment_size)] = \
-            numpy.mean(fragment_energies)
-        scores_df['min_energy_for_{0}mers'.format(fragment_size)] = \
-            numpy.min(fragment_energies)
-        scores_df['max_energy_for_{0}mers'.format(fragment_size)] = \
-            numpy.max(fragment_energies)
-        scores_df['std_energy_for_{0}mers'.format(fragment_size)] = \
-            numpy.std(fragment_energies)
+        # Next, compute the energy of all n-mers in the structure and then
+        # compute summary statistics from that list
+        fragment_sizes = [2, 3, 4, 5]
+        for fragment_size in fragment_sizes:
+            fragment_energies = []
+            for res_n in range(1, nres-fragment_size+2):
+                fragment_n = [res_n + i for i in range(fragment_size)]
+                avg_per_residue_energy_fragment_i = \
+                    sum(energies_df.loc[fragment_n][energy_col]) / fragment_size
+                fragment_energies.append(avg_per_residue_energy_fragment_i)
+                scores_df['avg_per_residue_{0}_{1}mer_{2}'.format(
+                    energy_col, fragment_size, res_n
+                )] = avg_per_residue_energy_fragment_i
+            scores_df['avg_{0}_for_{1}mers'.format(energy_col, fragment_size)] = \
+                numpy.mean(fragment_energies)
+            scores_df['min_{0}_for_{1}mers'.format(energy_col, fragment_size)] = \
+                numpy.min(fragment_energies)
+            scores_df['max_{0}_for_{1}mers'.format(energy_col, fragment_size)] = \
+                numpy.max(fragment_energies)
+            scores_df['std_{0}_for_{1}mers'.format(energy_col, fragment_size)] = \
+                numpy.std(fragment_energies)
 
     # For each residue in the protein, get a list of all neighboring residues
     # where both residues have at least one side-chain atom below the specified

@@ -106,8 +106,10 @@ Most metrics are described in the supplemental material of [Rocklin, 2017, Scien
 
 **Metrics related to per-residue Rosetta energies of fragments in primary sequence:**
 * `energies_per_residue_site_{N}`: the total Rosetta energy for site `N` in the protein.
-* `avg_per_residue_energies_{N}mer_{i}`: for a given fragment of size `N` starting at site `i` in the protein, the average per-residue total Rosetta energies of all sites in the fragment. Currently, this metric is computed for Ns of: 2, 3, 4, or 5.
-* `avg_energy_for_{N}mers`, `min_energy_for_{N}mers`, `max_energy_for_{N}mers`: the average, minimum, and maximum value of all Nmers of a given size `N`. These values are computed from `avg_per_residue_energies_{N}mer_{i}`, across all sites `i`.
+* `min_per_site_{energy}`, `max_per_site_{energy}`, `mean_per_site_{energy}`, `std_per_site_{energy}`: the minimum, maximum, mean, and standard deviation of the energy across all sites in the protein, computed for each score term in the `beta_nov16` energy function, as well as for the total score (called "energy").
+* `avg_lowest_per_site_{energy}` and `avg_highest_per_site_{energy}`: same as above, but the average of the lowest or highest five energies, respectively, acorss all sites in the protein.
+* `avg_per_residue_{energy}_{N}mer_{i}`: for a given fragment of size `N` starting at site `i` in the protein, the average per-residue `energy` of all sites in the fragment. Currently, this metric is computed for Ns of: 2, 3, 4, or 5, and for all energy terms in the `beta_nov16` energy function.
+* `avg_{energy}_for_{N}mers`, `min_{energy}_for_{N}mers`, `max_{energy}_for_{N}mers`: the average, minimum, and maximum value of all Nmers of a given size `N`. These values are computed from `avg_per_residue_{energy}_{N}mer_{i}`, across all sites `i`.
 
 **Metrics related to per-residue energies of 3D neighborhoods:**
 * `neighborhood_site_{i}_{D}A`: for site `i`, a comma-delimited string with integers giving the number of each residue in the protein that has a side-chain/side-chain contact with site `i`. Two residues are defined as contacting if there is at least one pair of atoms between residues that are within a distance of `D` Angstroms.

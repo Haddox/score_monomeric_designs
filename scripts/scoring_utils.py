@@ -588,7 +588,7 @@ def compute_per_residue_energies(pdb):
     # Initiate a dictionary to store per-residue scores
     scores_dict = {
         key : []
-        for key in ['res_n', 'res_aa', 'total_score'] + score_terms
+        for key in ['res_n', 'res_aa', 'energy'] + score_terms
     }
 
     # Read in and score pose
@@ -600,7 +600,7 @@ def compute_per_residue_energies(pdb):
     for res_n in list(range(1, pose.size()+1)):
         scores_dict['res_n'].append(res_n)
         scores_dict['res_aa'].append(pose.residue(res_n).name1())
-        scores_dict['total_score'].append(
+        scores_dict['energy'].append(
             pose.energies().residue_total_energy(res_n)
         )
         for score_term in score_terms:
