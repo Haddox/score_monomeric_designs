@@ -138,7 +138,9 @@ Most metrics are described in the supplemental material of [Rocklin, 2017, Scien
 * `ProteinVolume_packing_density`: the packing density of the protein (van der Waals volume / total volume), computed using the `ProteinVolume` program
 
 **Metrics related to ABEGO types**
+* `abego_types`: a string giving the ABEGO type for each residue in the protein, ordered by site
 * `abego_counts_in_loops_*`: counts of 1-, 2-, and 3-mer ABEGO strings in loops for all possible strings
+* `{aa}_{abego_type}_counts_in_loops`: counts of the specified combination of amino acid and ABEGO type in loops in the protein.
 
 
 

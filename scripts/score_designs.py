@@ -325,7 +325,7 @@ def score_pdb_file(pdb_file_name, output_dir):
     # each residue's energy in the main dataframe returned at the end of this
     # function
     nres = pose.total_residue()
-    energies_df = scoring_utils.compute_per_residue_energies(pdb)
+    energies_df = scoring_utils.compute_per_residue_energies(pdb_file_name)
     energies_df.sort_values('res_n', inplace=True, ascending=True)
     energies_df.set_index('res_n', inplace=True)
     for (i, row) in energies_df.iterrows():
@@ -603,12 +603,33 @@ def score_pdb_file(pdb_file_name, output_dir):
     # within loops
     abego_string = scores_df.iloc[0]['abego_types'].upper()
     dssp_string = scores_df.iloc[0]['dssp'].upper()
+    sequence = scores_df.iloc[0]['sequence'].upper()
+    assert len(abego_string) == len(dssp_string) == len(sequence), \
+        "{0} vs. {1} vs. {2}".format(
+        len(abego_string), len(dssp_string), len(sequence)
+    )
     abego_counts_dict = scoring_utils.compute_abego_counts_in_loops(
         abego_string, dssp_string
     )
     for (abego_string, counts) in abego_counts_dict.items():
         scores_df['abego_counts_in_loops_{0}'.format(abego_string)] = counts
 
+    # Then, compute counts of each amino acid in each ABEGO type in loops.
+    # To do so, first initiate a dictionary of all possible aa-abego combos...
+    abego_types = list('ABEGO')
+    abego_aa_counts_in_loops_dict = {
+        '{0}_{1}'.format(aa, abego) : 0
+        for (aa, abego) in list(itertools.product(amino_acids, abego_types))
+    }
+
+    # ... then count the number of observed combos in loops
+    for (abego, aa, ss) in zip(abego_string, sequence, dssp_string):
+        if ss.upper() == 'L':
+            abego_aa_counts_in_loops_dict['{0}_{1}'.format(aa, abego)] += 1
+
+    for (combo, counts) in abego_aa_counts_in_loops_dict.items():
+        scores_df['{0}_counts_in_loops'.format(combo)] = counts
+        
     #------------------------------------------------------------------------
     # Add metrics on protein volume
     #------------------------------------------------------------------------
@@ -631,7 +652,8 @@ def score_pdb_file(pdb_file_name, output_dir):
         'buried_over_exposed_np_AFILMVWY'
     ]
     for metric in per_res_metrics:
-        scores_df['{0}_per_res'.format(metric)] = scores_df[metric] / scores_df['nres']
+        scores_df['{0}_per_res'.format(metric)] = \
+            scores_df[metric] / scores_df['nres']
 
 
     #------------------------------------------------------------------------
