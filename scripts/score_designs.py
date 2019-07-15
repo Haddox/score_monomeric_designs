@@ -610,9 +610,10 @@ def score_pdb_file(pdb_file_name, output_dir):
     abego_counts_dict = scoring_utils.compute_abego_counts_in_loops(
         abego_string, dssp_string
     )
-    for (abego_string, counts) in abego_counts_dict.items():
-        scores_df['abego_counts_in_loops_{0}'.format(abego_string)] = counts
-
+    for (abego_string_i, counts) in abego_counts_dict.items():
+        scores_df['abego_counts_in_loops_{0}'.format(abego_string_i)] = \
+            counts
+    
     # Then, compute counts of each amino acid in each ABEGO type in loops.
     # To do so, first initiate a dictionary of all possible aa-abego combos...
     abego_types = list('ABEGO')
@@ -622,6 +623,10 @@ def score_pdb_file(pdb_file_name, output_dir):
     }
 
     # ... then count the number of observed combos in loops
+    assert len(abego_string) == len(dssp_string) == len(sequence), \
+        "{0} vs. {1} vs. {2}".format(
+        len(abego_string), len(dssp_string), len(sequence)
+    )
     for (abego, aa, ss) in zip(abego_string, sequence, dssp_string):
         if ss.upper() == 'L':
             abego_aa_counts_in_loops_dict['{0}_{1}'.format(aa, abego)] += 1
