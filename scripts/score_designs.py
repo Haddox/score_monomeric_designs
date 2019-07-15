@@ -413,10 +413,10 @@ def score_pdb_file(pdb_file_name, output_dir):
         # neighborhood
         energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)] = \
             energies_df.apply(
-                lambda row: compute_total_charge_of_seq_subset(
-                    row['sequence'],
+                lambda row: scoring_utils.compute_total_charge_of_seq_subset(
+                    sequence,
                     row['neighborhood_{0}'.format(distance_cutoff)]
-                )
+                ), axis=1
             )
         
         # ... then compute the average distance in primary sequence between the
@@ -603,7 +603,6 @@ def score_pdb_file(pdb_file_name, output_dir):
     # within loops
     abego_string = scores_df.iloc[0]['abego_types'].upper()
     dssp_string = scores_df.iloc[0]['dssp'].upper()
-    sequence = scores_df.iloc[0]['sequence'].upper()
     assert len(abego_string) == len(dssp_string) == len(sequence), \
         "{0} vs. {1} vs. {2}".format(
         len(abego_string), len(dssp_string), len(sequence)
@@ -626,7 +625,6 @@ def score_pdb_file(pdb_file_name, output_dir):
     for (abego, aa, ss) in zip(abego_string, sequence, dssp_string):
         if ss.upper() == 'L':
             abego_aa_counts_in_loops_dict['{0}_{1}'.format(aa, abego)] += 1
-
     for (combo, counts) in abego_aa_counts_in_loops_dict.items():
         scores_df['{0}_counts_in_loops'.format(combo)] = counts
         
