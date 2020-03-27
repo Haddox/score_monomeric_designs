@@ -334,14 +334,14 @@ def score_pdb_file(pdb_file_name, output_dir):
     # Make sure the per-residue energies add up to approximately
     # the total energy
     assert (sum(energies_df['energy']) - scorefxn(pose)) < 1e-3
-        
+
     # For each score term, compute summary statistics on per-residue
     # energies, including the total energy, as well as individual score
     # terms.
     for energy_col in energies_df.columns.values:
         if energy_col in ['res_aa']:
-            continue        
-        
+            continue
+
         # First, compute the min, max, mean, and standard deviation of
         # each term. Also compute the mean of the 5 worst or best scores.
         sorted_vals = energies_df[energy_col].sort_values(ascending=True)
@@ -364,9 +364,10 @@ def score_pdb_file(pdb_file_name, output_dir):
                 avg_per_residue_energy_fragment_i = \
                     sum(energies_df.loc[fragment_n][energy_col]) / fragment_size
                 fragment_energies.append(avg_per_residue_energy_fragment_i)
-                scores_df['avg_per_residue_{0}_{1}mer_{2}'.format(
-                    energy_col, fragment_size, res_n
-                )] = avg_per_residue_energy_fragment_i
+                if False: # For now, I do not add site-specific values since it explodes the number of columns
+                    scores_df['avg_per_residue_{0}_{1}mer_{2}'.format(
+                        energy_col, fragment_size, res_n
+                    )] = avg_per_residue_energy_fragment_i
             scores_df['avg_{0}_for_{1}mers'.format(energy_col, fragment_size)] = \
                 numpy.mean(fragment_energies)
             scores_df['min_{0}_for_{1}mers'.format(energy_col, fragment_size)] = \
@@ -418,7 +419,7 @@ def score_pdb_file(pdb_file_name, output_dir):
                     row['neighborhood_{0}'.format(distance_cutoff)]
                 ), axis=1
             )
-        
+
         # ... then compute the average distance in primary sequence between the
         # residue used to define the neighborhood and each of its neighbors
         energies_df[
@@ -434,32 +435,34 @@ def score_pdb_file(pdb_file_name, output_dir):
     # end of this function
     for distance_cutoff in distance_cutoffs:
 
-        # First, add site-specific data
-        for (i, row) in energies_df.iterrows():
-            scores_df[
-                'neighborhood_site_{0}_{1}A'.format(row.name, distance_cutoff)
-            ] = \
-                ','.join(map(str, row['neighborhood_{0}'.format(distance_cutoff)]))
-            scores_df[
-                'avg_per_res_energy_of_site_{0}_neighborhood_{1}A'.format(
-                    row.name, distance_cutoff
-                )
-            ] = \
-                row['energy_of_neighborhood_{0}'.format(distance_cutoff)]
-            scores_df[
-                'n_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)
-            ] = \
-                row['n_neighbors_{0}'.format(distance_cutoff)]
-            scores_df[
-                'avg_dist_in_primary_sequence_to_neighbors_site_{0}_{1}A'.format(
-                    row.name, distance_cutoff
-                )
-            ] = \
-                row[
-                'avg_dist_in_primary_sequence_to_neighbors_{0}'.format(
-                    distance_cutoff
+        # First, add site-specific data (currently, I do not add this data since
+        # it adds a massive number of columns to the final dataframe)
+        if False:
+            for (i, row) in energies_df.iterrows():
+                scores_df[
+                    'neighborhood_site_{0}_{1}A'.format(row.name, distance_cutoff)
+                ] = \
+                    ','.join(map(str, row['neighborhood_{0}'.format(distance_cutoff)]))
+                scores_df[
+                    'avg_per_res_energy_of_site_{0}_neighborhood_{1}A'.format(
+                        row.name, distance_cutoff
                     )
-                ]
+                ] = \
+                    row['energy_of_neighborhood_{0}'.format(distance_cutoff)]
+                scores_df[
+                    'n_neighbors_site_{0}_{1}A'.format(row.name, distance_cutoff)
+                ] = \
+                    row['n_neighbors_{0}'.format(distance_cutoff)]
+                scores_df[
+                    'avg_dist_in_primary_sequence_to_neighbors_site_{0}_{1}A'.format(
+                        row.name, distance_cutoff
+                    )
+                ] = \
+                    row[
+                    'avg_dist_in_primary_sequence_to_neighbors_{0}'.format(
+                        distance_cutoff
+                        )
+                    ]
 
         # Then, add summary statistics that take all sites into account
         scores_df['avg_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
@@ -470,7 +473,7 @@ def score_pdb_file(pdb_file_name, output_dir):
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].max()
         scores_df['std_energy_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
             energies_df['energy_of_neighborhood_{0}'.format(distance_cutoff)].std()
-        
+
         scores_df['mean_charge_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
             energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)].mean()
         scores_df['min_charge_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
@@ -480,7 +483,7 @@ def score_pdb_file(pdb_file_name, output_dir):
         scores_df['std_charge_of_{0}A_neighborhoods'.format(distance_cutoff)] = \
             energies_df['charge_of_neighborhood_{0}'.format(distance_cutoff)].std()
 
-        
+
     # Compute the number of pairswise 3D contacts for all amino-acid pairs
     # for each distance cutoff
     for distance_cutoff in distance_cutoffs:
@@ -613,7 +616,7 @@ def score_pdb_file(pdb_file_name, output_dir):
     for (abego_string_i, counts) in abego_counts_dict.items():
         scores_df['abego_counts_in_loops_{0}'.format(abego_string_i)] = \
             counts
-    
+
     # Then, compute counts of each amino acid in each ABEGO type in loops.
     # To do so, first initiate a dictionary of all possible aa-abego combos...
     abego_types = list('ABEGO')
@@ -632,7 +635,7 @@ def score_pdb_file(pdb_file_name, output_dir):
             abego_aa_counts_in_loops_dict['{0}_{1}'.format(aa, abego)] += 1
     for (combo, counts) in abego_aa_counts_in_loops_dict.items():
         scores_df['{0}_counts_in_loops'.format(combo)] = counts
-        
+
     #------------------------------------------------------------------------
     # Add metrics on protein volume
     #------------------------------------------------------------------------
@@ -685,7 +688,7 @@ def write_results(results_file, sub_results):
 # Initialize relevant Movers and Filters in PyRosetta
 #---------------------------------------------------------------
 # Initialize a specific score function
-pyrosetta.init(extra_options='-beta -holes:dalphaball /work/brunette/scripts/DAlphaBall.gcc')
+pyrosetta.init(extra_options='-beta_nov16 -holes:dalphaball /home/sheffler/bin/DAlphaBall.gcc')
 scorefxn = pyrosetta.get_score_function()
 
 # Tweak the score function so that it includes energies from

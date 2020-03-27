@@ -1,7 +1,6 @@
 #!/usr/local/bin/python
 import sys
 import Bio.PDB
-sys.path.append( '/work/grocklin/local/anaconda/pkgs/networkx-1.9.1-py27_0/lib/python2.7/site-packages/' )
 import networkx as nx
 from numpy import *
 from Bio.PDB import *

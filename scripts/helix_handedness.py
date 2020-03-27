@@ -7,15 +7,15 @@ import get_seq
 
 def main( args ):
     outstr = ''
-
+    frag_picker_dir = '/software/frapicker/'
     for filenum, fn in enumerate(args):
         seq = get_seq.main([fn]).split('\n')[0].split()[-1]
         COMs = []
         with open(fn) as file:
             lines = file.readlines()
         lines = filter(lambda x: ' CA ' in x, lines)
-        dssp_string = commands.getoutput('/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/tools/fragment_tools/pdb2vall/structure_profile_scripts/dssp2threestateSS.pl %s' % fn).split('\n')[-1].strip()
-        if 'E' in dssp_string: 
+        dssp_string = commands.getoutput('{0}/Rosetta/tools/fragment_tools/pdb2vall/structure_profile_scripts/dssp2threestateSS.pl {1}'.format(frag_picker_dir, fn)).split('\n')[-1].strip()
+        if 'E' in dssp_string:
             outstr += '%s %s %s\n' % (fn, seq, 0)
             continue
         #print dssp_string

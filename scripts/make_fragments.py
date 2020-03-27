@@ -2,7 +2,6 @@
 Python script for making and analyzing fragments for an input protein design
 """
 
-
 from argparse import ArgumentParser
 import os
 import glob
@@ -11,15 +10,22 @@ parser  = ArgumentParser()
 import sys
 from shutil import copy
 
-fragment_tools = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/tools/fragment_tools/'
-psipred = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/psipred3.21/'
-scripts_dir = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/bakerlab_scripts/boinc/'
-nnmake = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/nnmake/pNNMAKE.gnu'
-csbuild = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/csbuild/'
-cm_scripts = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/cm_scripts/bin/'
-rosetta = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/main/source/bin/'
+fragment_tools = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/tools/fragment_tools/'
+psipred = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/psipred3.21/'
+scripts_dir = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/bakerlab_scripts/boinc/'
+nnmake = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/nnmake/pNNMAKE.gnu'
+csbuild = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/csbuild/'
+cm_scripts = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/cm_scripts/bin/'
+rosetta = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/main/source/bin/'
 if not 'SPARKSDIR' in os.environ:
-  os.environ[ 'SPARKSXDIR' ] = '/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/sparks-x'
+  os.environ[ 'SPARKSXDIR' ] = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/sparks-x'
+
+# Get the name of the director where Gabe's scripts are stored
+gabe_scripts_dir = os.path.join(
+    os.path.split(os.path.abspath(__file__))[0],
+    'gabe_scripts'
+)
+assert os.path.isfile('{0}/frag_qual_and_sequence.py'.format(gabe_scripts_dir))
 
 def chckmkdir(path,out = sys.stdout):
   if not os.path.exists(path):
@@ -60,7 +66,7 @@ def generate_fragments(pdb, args):
     if(args.eval_method == 'nobu'):
       os.system(rosetta+"r_frag_quality.linuxgccrelease -in:file:native 00001.pdb -f  00001.200.9mers")
       os.system(scripts_dir+"/count_goodfrag.pl --s=frag_qual.dat > good_fragments_count.txt")
-      os.system('python2 /work/grocklin/gabe_scripts/frag_qual_and_sequence.py frag_qual.dat')
+      os.system('python2 {0}/frag_qual_and_sequence.py frag_qual.dat'.format(gabe_scripts_dir))
     if(args.eval_method == 'tj'):
       os.system(rosetta+"fragment_rmsd.linuxgccrelease -in:file:s 00001.pdb -in:file:frag3 00001.200.9mers > rmsd_9mers.txt")
   os.chdir(currentdir)

@@ -13,8 +13,10 @@ import np_aa_burial
 import subprocess
 import get_seq
 import abego_seq_agreement
-import core_clusters
+#import core_clusters
 import helix_handedness
+
+frag_picker_dir = '/home/robetta/workspace/labFragPicker_DO_NOT_REMOVE/'
 
 score_dict = pd.read_csv(sys.argv[1]) #, header=1, sep = '\s+')
 pdbs = ['%s.pdb' % x for x in score_dict['description'].values]
@@ -40,7 +42,6 @@ print >> sys.stderr, (score_dict['description']), sys.stderr
 score_dict['sequence'] = score_dict['description'].map(lambda x: name_to_seq[x])
 score_dict['n_res'] = score_dict['sequence'].map(len)
 
-
 #dssp
 if os.path.isfile('%s.dssp' % sys.argv[1]):
     print >> sys.stderr, 'Loading DSSP from %s.dssp' % sys.argv[1], sys.stderr
@@ -58,11 +59,10 @@ else:
         # TODO fixup dssp calc to not write extra .dssp files
         # Copy pdb file to working directory
         # Run dssp on the tempfile
-        cmd = ['/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/tools/fragment_tools/pdb2vall/structure_profile_scripts/dssp2threestateSS.pl', pdb]
+        cmd = ['{0}/Rosetta/tools/fragment_tools/pdb2vall/structure_profile_scripts/dssp2threestateSS.pl'.format(frag_picker_dir), pdb]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         out, err = process.communicate()
         name_to_dssp[pdb[0:-4]] = ''.join( out.split('\n')[1:] )
-        #name_to_dssp[pdb[0:-4]] = ''.join( commands.getoutput('/work/robetta/workspace/labFragPicker_DO_NOT_REMOVE/Rosetta/tools/fragment_tools/pdb2vall/structure_profile_scripts/dssp2threestateSS.pl %s' % pdb).split('\n')[1:] )
         #print >> sys.stderr, pdb, name_to_dssp[pdb[0:-4]]
         if i % 100 == 0:
             print >> sys.stderr, 'Obtained DSSP for structure %d of %d' % ( i+1, len(pdbs.split()) ), sys.stderr
@@ -79,7 +79,6 @@ score_dict['frac_sheet'] = map(lambda x, y: float(x) / float(y), score_dict['nre
 score_dict['frac_loop'] = map(lambda x, y: float(x) / float(y), score_dict['nres_loop'], score_dict['n_res'])
 score_dict['hbond_sr_bb_per_helix'] = map(lambda x, y:  y/max([1,y]) *      (float(x) / max([1,float(y)])), score_dict['hbond_sr_bb'], score_dict['nres_helix'])
 score_dict['hbond_lr_bb_per_sheet'] = map(lambda x, y:  y/max([1,y]) *      (float(x) / max([1,float(y)])), score_dict['hbond_lr_bb'], score_dict['nres_sheet'])
-
 
 
 def helix_terms(seq, dssp):
@@ -123,7 +122,6 @@ score_dict['Tend_netq'] = helix_netq[:,2]
 score_dict['T1_absq'] = helix_netq[:,3]
 score_dict['Tminus1_absq'] = helix_netq[:,4]
 score_dict['Tend_absq'] = helix_netq[:,5]
-
 
 #gc_content
 if os.path.isfile('%s.gc_content' % sys.argv[1]):
@@ -179,8 +177,6 @@ if os.path.isfile('%s.abego_terms' % sys.argv[1]):
         lines = file.readlines()
 else:
     print >> sys.stderr, 'Calculating abego term penalties...', sys.stderr
-    #print >> sys.stderr, '/work/grocklin/gabe_scripts/abego_seq_agreement.py --nopdb --short %s > %s.abego_terms' % (pdbs,sys.argv[1])
-    #lines = commands.getoutput('/work/grocklin/gabe_scripts/abego_seq_agreement.py --nopdb --short %s > %s.abego_terms' % (pdbs,sys.argv[1])).split('\n')
     lines = abego_seq_agreement.main( [ '--nopdb', '--short' ] + pdbs.split() ).split( '\n' )
     #print >> sys.stderr, lines
     with open('%s.abego_terms' % sys.argv[1],'w') as file:
@@ -197,49 +193,27 @@ score_dict['abego_res_profile_penalty'] = score_dict['sequence'].map(
     lambda x: float(seq_to_abego_terms[x][-1]) if x in seq_to_abego_terms.keys() else "KeyError: {0}".format(x)
 )
 
-#helix handedness
-# seq_to_3helix_handedness = {}
-# if os.path.isfile('%s.3helix_handedness' % sys.argv[1]):
-#     print >> sys.stderr, 'Loading 3-helix bundle handedness from %s.3helix_handedness...' % sys.argv[1]
-#     with open('%s.3helix_handedness' % sys.argv[1]) as file:
-#         lines = file.readlines()
-# else:
-#     print >> sys.stderr, 'Calculating 3-helix bundle handedness...'
-#     #print >> sys.stderr, '/work/grocklin/gabe_scripts/abego_seq_agreement.py --nopdb --short %s > %s.abego_terms' % (pdbs,sys.argv[1])
-#     #lines = commands.getoutput('/work/grocklin/gabe_scripts/abego_seq_agreement.py --nopdb --short %s > %s.abego_terms' % (pdbs,sys.argv[1])).split('\n')
-#     lines = helix_handedness.main( pdbs.split() ).split( '\n' )
-#     #print >> sys.stderr, lines
-#     with open('%s.3helix_handedness' % sys.argv[1],'w') as file:
-#         for line in lines:
-#             file.write('%s\n' % line)
-# for line in lines:
-#     seq = line.split()[1]
-#     seq_to_3helix_handedness[seq] = float(line.split()[2])
-# score_dict['3helix_handedness'] = score_dict['sequence'].map(lambda x: float(seq_to_3helix_handedness[x]))
-
-
 #core cluster terms
-seq_to_core_cluster_terms = {}
-if os.path.isfile('%s.core_clusters' % sys.argv[1]):
-    print >> sys.stderr, 'Loading core cluster terms from %s.core_clusters...' % sys.argv[1], sys.stderr
-    with open('%s.core_clusters' % sys.argv[1]) as file:
-        lines = file.readlines()
-else:
-    print >> sys.stderr, 'Calculating core cluster terms...', sys.stderr
+#seq_to_core_cluster_terms = {}
+#if os.path.isfile('%s.core_clusters' % sys.argv[1]):
+#    print >> sys.stderr, 'Loading core cluster terms from %s.core_clusters...' % sys.argv[1], sys.stderr
+#    with open('%s.core_clusters' % sys.argv[1]) as file:
+#        lines = file.readlines()
+#else:
+#    print >> sys.stderr, 'Calculating core cluster terms...', sys.stderr
     #print >> sys.stderr, pdbs
-    #lines = commands.getoutput('/work/grocklin/gabe_scripts/core_clusters.py %s > %s.core_clusters' % (pdbs, sys.argv[1])).split('\n')
-    lines = core_clusters.main( pdbs.split() ).split( '\n' )
-    with open('%s.core_clusters' % sys.argv[1],'w') as file:
-        for line in lines:
-            file.write('%s\n' % line)
-for line in lines:
-    seq = line.split()[1]
-    seq_to_core_cluster_terms[seq] = line.split()[2:6]
+#    lines = core_clusters.main( pdbs.split() ).split( '\n' )
+#    with open('%s.core_clusters' % sys.argv[1],'w') as file:
+#        for line in lines:
+#            file.write('%s\n' % line)
+#for line in lines:
+#    seq = line.split()[1]
+#    seq_to_core_cluster_terms[seq] = line.split()[2:6]
 
-score_dict['largest_hphob_cluster'] = score_dict['sequence'].map(lambda x: int(seq_to_core_cluster_terms[x][0]))
-score_dict['n_hphob_clusters'] = score_dict['sequence'].map(lambda x: int(seq_to_core_cluster_terms[x][1]))
-score_dict['hphob_sc_contacts'] = score_dict['sequence'].map(lambda x: int(seq_to_core_cluster_terms[x][2]))
-score_dict['hphob_sc_degree'] = score_dict['sequence'].map(lambda x: float(seq_to_core_cluster_terms[x][3]))
+#score_dict['largest_hphob_cluster'] = score_dict['sequence'].map(lambda x: int(seq_to_core_cluster_terms[x][0]))
+#score_dict['n_hphob_clusters'] = score_dict['sequence'].map(lambda x: int(seq_to_core_cluster_terms[x][1]))
+#score_dict['hphob_sc_contacts'] = score_dict['sequence'].map(lambda x: int(seq_to_core_cluster_terms[x][2]))
+#score_dict['hphob_sc_degree'] = score_dict['sequence'].map(lambda x: float(seq_to_core_cluster_terms[x][3]))
 
 #forward folding terms
 seq_to_ffmetric = {}
@@ -316,24 +290,6 @@ burial_df = pd.read_csv('%s.burial_analysis' % sys.argv[1],delim_whitespace=True
 score_dict = pd.merge(left=score_dict, right=burial_df[['sequence','buried_np_AFILMVWY','exposed_np_AFILMVWY']], on='sequence',how='left')
 score_dict['buried_np_AFILMVWY_per_res'] = float(score_dict.buried_np_AFILMVWY) / float(score_dict.n_res)
 
-
-#residue scores vs means analysis
-# seq_to_score_vs_mean = {}
-# if os.path.isfile('%s.score_vs_mean' % sys.argv[1]):
-#     print >> sys.stderr, 'Loading residue scores vs means analysis from %s.score_vs_mean...' % sys.argv[1]
-# else:
-#     print >> sys.stderr, 'Calculating residue scores vs means...'
-#     commands.getoutput('/work/grocklin/gabe_scripts/score_vs_mean.py %s --quiet > %s.score_vs_mean' % (pdbs, sys.argv[1])).split('\n')
-# with open('%s.score_vs_mean' % sys.argv[1]) as file:
-#     lines = file.readlines()
-#     for line in lines:
-#         seq = line.split()[1]
-#         seq_to_score_vs_mean[seq] = [float(line.split()[x]) for x in [2,3,4]]
-#     for seq in score_dict.sequence.values:
-#         if seq not in seq_to_score_vs_mean: seq_to_score_vs_mean[seq] = [0,0,0]
-# score_dict['res_vs_mean'] = score_dict['sequence'].map(lambda x: seq_to_score_vs_mean[x][0])
-# score_dict['res_vs_mean_worst'] = score_dict['sequence'].map(lambda x: seq_to_score_vs_mean[x][1])
-# score_dict['res_vs_mean_4th'] = score_dict['sequence'].map(lambda x: seq_to_score_vs_mean[x][2])
 
 #net charge
 charges = {'H': 0.5, 'R': 1.0, 'K': 1.0, 'E': -1.0, 'D': -1.0}

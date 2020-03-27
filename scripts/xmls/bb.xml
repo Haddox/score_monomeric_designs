@@ -1,6 +1,6 @@
 <ROSETTASCRIPTS>
 <SCOREFXNS>
-    <ScoreFunction name="SFXN7" weights="beta" />
+    <ScoreFunction name="SFXN7" weights="beta_nov16" />
 </SCOREFXNS>
 <MOVERS>
 </MOVERS>

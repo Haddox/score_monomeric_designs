@@ -90,7 +90,7 @@ def ComputeAminoAcidFrequencyInResidueSubset(aa_seq, per_residue_ids, aa, subset
     residues_in_subset_bools = per_residue_ids == subset_id
     n_residues_in_subset = sum(residues_in_subset_bools)
     if n_residues_in_subset == 0:
-        return None
+        return 0.0 #None
     else:
         # Compute the counts or frequency of a given amino acid among the subset
         # of residues defined above and return the result
@@ -448,19 +448,19 @@ def compute_protein_volume_metrics(pdb, vol_dir, path_to_ProteinVolume):
 def compute_abego_counts_in_loops(abego_string, dssp_string):
     """
     Compute counts for ABEGO 1-, 2-, and 3-mers in loops
-    
+
     Args:
         *abego_string*: a string of the per-residue ABEGO types
             for each residue in the protein (upper case)
         *dssp_string*: a string of per-residue secondary structure
             for each residue in the protein (upper case; H=helix,
             E=strand, L=loop)
-            
+
     Returns:
         A dictionary with all possible ABEGO 1-, 2-, and 3-mer
             sequences as keys and counts of these sequences in
             loops as values
-            
+
     Code for doctest:
     >>> abego_string = 'AGA'
     >>> dssp_string = 'ELL'
@@ -529,14 +529,14 @@ def compute_abego_counts_in_loops(abego_string, dssp_string):
 def compute_total_charge_of_seq_subset(sequence, list_of_sites_ns):
     """
     Compute the total charge of a subset of an amino-acid sequence
-    
+
     Args:
         *sequence*: amino-acid sequence (string)
         *list_of_site_ns*: list of site numbers (integers) that defines
             the subset of the sequence to analyze, indexed starting at 1
     Returns:
         The total charge of the sites listed (float)
-        
+
     Code for doctest:
     >>> sequence = 'HAERKKD'
     >>> list_of_sites_ns = [1]
@@ -546,7 +546,7 @@ def compute_total_charge_of_seq_subset(sequence, list_of_sites_ns):
     >>> compute_total_charge_of_seq_subset(sequence, list_of_sites_ns)
     1.5
     """
-    
+
     # Define amino-acid charges
     amino_acid_charges = {
         'E' : -1,
@@ -555,7 +555,7 @@ def compute_total_charge_of_seq_subset(sequence, list_of_sites_ns):
         'K' : 1,
         'H' : 0.5
     }
-    
+
     # Compute the total charge of the indicated subset of sites
     # and return the result
     sequence = sequence.upper()

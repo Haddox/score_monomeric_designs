@@ -1,5 +1,5 @@
 <SCOREFXNS>
-    <ScoreFunction name="TotalHydrophobic" weights="/work/grocklin/gabe_scripts/total_hydrophobic_weights.wts"/>
+    <ScoreFunction name="TotalHydrophobic" weights="scripts/gabe_scripts/total_hydrophobic_weights.wts"/>
 </SCOREFXNS>
 <FILTERS>
     <TotalSasa name="exposed_hydrophobics" confidence="0" hydrophobic="True" />
